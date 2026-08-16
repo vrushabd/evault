@@ -1,43 +1,68 @@
 import axios from 'axios';
 
-// Gateway Base URL (Port 8080) as per architecture specs, with fallback to direct service ports
-const GATEWAY_URL = 'http://localhost:8080';
+// Service Base URLs
 const INTEGRATION_DIRECT_URL = 'http://localhost:8086';
 const AUTH_DIRECT_URL = 'http://localhost:8081';
 const DOC_DIRECT_URL = 'http://localhost:8082';
 
 const apiClient = axios.create({
   baseURL: INTEGRATION_DIRECT_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });
 
 const authClient = axios.create({
   baseURL: AUTH_DIRECT_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
+});
+
+// Attach JWT to all auth requests automatically if present in localStorage
+authClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('evault-token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 const docClient = axios.create({
   baseURL: DOC_DIRECT_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });
 
 export const api = {
-  // Gateway & Auth Service (Port 8081 / Gateway /api/auth)
+
+  // =========================================================
+  // METAMASK WALLET AUTH (Real JWT Flow)
+  // =========================================================
+
+  // Step 1: Get a one-time nonce from the backend for a wallet address
+  getNonce: async (walletAddress) => {
+    const res = await authClient.get(`/api/auth/nonce/${walletAddress}`);
+    return res.data.nonce;
+  },
+
+  // Step 2: Submit wallet + signed nonce + signature → receive real JWT
+  walletLogin: async (walletAddress, nonce, signature) => {
+    const res = await authClient.post('/api/auth/login', { walletAddress, nonce, signature });
+    return res.data; // { token, walletAddress, role }
+  },
+
+  // Get the role of a registered wallet
+  getUserRole: async (walletAddress) => {
+    const res = await authClient.get(`/api/auth/roles/${walletAddress}`);
+    return res.data; // role string e.g. "LAWYER"
+  },
+
+  // =========================================================
+  // LEGACY EMAIL/PASSWORD AUTH (mock fallback)
+  // =========================================================
   login: async (credentials) => {
     try {
-      const res = await authClient.post('/auth/login', credentials);
+      const res = await authClient.post('/api/auth/login', credentials);
       return res.data;
     } catch (err) {
-      console.warn("Auth Service port 8081 offline or mock active:", err);
+      console.warn('Auth Service port 8081 offline or mock active:', err);
       const role = credentials.email?.includes('judge') ? 'JUDGE' : credentials.email?.includes('lawyer') ? 'LAWYER' : 'CLIENT';
       return {
         success: true,
@@ -49,19 +74,19 @@ export const api = {
             email: credentials.email,
             role: role,
             barNumber: role === 'LAWYER' ? 'MAH-10492-2020' : null,
-            courtName: role === 'JUDGE' ? 'Mumbai High Court' : null
-          }
-        }
+            courtName: role === 'JUDGE' ? 'Mumbai High Court' : null,
+          },
+        },
       };
     }
   },
 
   register: async (userData) => {
     try {
-      const res = await authClient.post('/auth/register', userData);
+      const res = await authClient.post('/api/auth/register', userData);
       return res.data;
     } catch (err) {
-      console.warn("Auth Service port 8081 offline or mock active:", err);
+      console.warn('Auth Service port 8081 offline or mock active:', err);
       return {
         success: true,
         data: {
@@ -71,14 +96,16 @@ export const api = {
             name: userData.name,
             email: userData.email,
             role: userData.role || 'CLIENT',
-            barNumber: userData.barNumber || null
-          }
-        }
+            barNumber: userData.barNumber || null,
+          },
+        },
       };
     }
   },
 
-  // eCourts API calls (Integration Service 8086 / Gateway /api/ecourts)
+  // =========================================================
+  // eCourts API (Integration Service 8086)
+  // =========================================================
   getCaseById: async (caseId) => {
     const res = await apiClient.get(`/ecourts/case/${encodeURIComponent(caseId)}`);
     return res.data;
@@ -104,7 +131,9 @@ export const api = {
     return res.data;
   },
 
-  // AI Document Classifier API calls (Integration Service 8086 / Gateway /api/classify)
+  // =========================================================
+  // AI Document Classifier (Integration Service 8086)
+  // =========================================================
   classifyText: async (text) => {
     const res = await apiClient.post('/classify/text', { text });
     return res.data;
@@ -114,14 +143,14 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
     const res = await apiClient.post('/classify/document', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data;
   },
 
-  // Aadhaar Identity Binding API calls (Integration Service 8086 / Gateway /api/aadhaar)
+  // =========================================================
+  // Aadhaar Identity Binding (Integration Service 8086)
+  // =========================================================
   bindAadhaar: async (aadhaarNumber, walletAddress) => {
     const res = await apiClient.post('/aadhaar/bind', { aadhaarNumber, walletAddress });
     return res.data;
@@ -132,29 +161,29 @@ export const api = {
     return res.data;
   },
 
-  // Document Microservice API calls (Port 8082 / Gateway /api/documents)
+  // =========================================================
+  // Document Service (Port 8082)
+  // =========================================================
   uploadDocument: async (file, caseId, docType) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('caseId', caseId);
     formData.append('docType', docType);
-    
     try {
       const res = await docClient.post('/api/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return res.data;
     } catch (err) {
-      console.warn("Document Service 8082 offline, using mock:", err);
-      // Fallback for demo
+      console.warn('Document Service 8082 offline, using mock:', err);
       return {
         doc_id: `DOC-${Math.floor(1000 + Math.random() * 9000)}`,
         case_id: caseId,
         doc_type: docType,
         ipfs_cid: `Qm${Math.random().toString(36).substring(2, 15)}...`,
         version: 1,
-        status: "VERIFIED_BLOCKCHAIN",
-        created_at: new Date().toISOString()
+        status: 'VERIFIED_BLOCKCHAIN',
+        created_at: new Date().toISOString(),
       };
     }
   },
@@ -173,8 +202,8 @@ export const api = {
       const res = await docClient.post('/api/documents/share', { docId, walletAddress, expiresAt: null });
       return res.data;
     } catch (err) {
-      console.warn("Document Service 8082 offline, using mock:", err);
-      return { success: true, docId, walletAddress, message: "Document shared successfully" };
+      console.warn('Document Service 8082 offline, using mock:', err);
+      return { success: true, docId, walletAddress, message: 'Document shared successfully' };
     }
   },
 
@@ -186,12 +215,12 @@ export const api = {
       return {
         docId,
         verified: true,
-        status: "VERIFIED",
+        status: 'VERIFIED',
         ipfsCid: `Qm${Math.random().toString(36).substring(2, 15)}...`,
-        txHash: `0x${Math.random().toString(16).substring(2, 15)}...`
+        txHash: `0x${Math.random().toString(16).substring(2, 15)}...`,
       };
     }
-  }
+  },
 };
 
 export default api;

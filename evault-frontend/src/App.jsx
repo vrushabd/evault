@@ -45,23 +45,59 @@ export function App() {
   const handleConnectWallet = async () => {
     if (window.ethereum) {
       try {
+        // Step 1: Request wallet address from MetaMask
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         if (accounts.length > 0) {
-          setWalletAddress(accounts[0]);
-          setIsConnected(true);
-          checkWalletAadhaarBinding(accounts[0]);
-          return;
+          const address = accounts[0];
+
+          try {
+            // Step 2: Get a one-time nonce from evault-auth backend
+            const nonce = await api.getNonce(address);
+
+            // Step 3: Ask MetaMask to sign the nonce (proves ownership of wallet)
+            const signature = await window.ethereum.request({
+              method: 'personal_sign',
+              params: [nonce, address],
+            });
+
+            // Step 4: Send wallet + nonce + signature to backend → receive real JWT
+            const loginResult = await api.walletLogin(address, nonce, signature);
+            localStorage.setItem('evault-token', loginResult.token);
+
+            setWalletAddress(address);
+            setIsConnected(true);
+
+            // Step 5: Fetch user role from backend
+            try {
+              const role = await api.getUserRole(address);
+              setCurrentUser({ walletAddress: address, role, name: address.substring(0, 10) + '...' });
+            } catch {
+              setCurrentUser({ walletAddress: address, role: loginResult.role || 'CLIENT', name: address.substring(0, 10) + '...' });
+            }
+
+            checkWalletAadhaarBinding(address);
+            return;
+          } catch (authErr) {
+            console.warn('JWT auth failed, wallet not registered or backend offline:', authErr);
+            // Wallet connected but not authenticated — still set address for demo
+            setWalletAddress(address);
+            setIsConnected(true);
+            checkWalletAadhaarBinding(address);
+            return;
+          }
         }
       } catch (err) {
-        console.warn("MetaMask connection cancelled, using demo wallet.");
+        console.warn('MetaMask connection cancelled, using demo wallet.');
       }
     }
-    
+
+    // Fallback: demo wallet for testing without MetaMask
     const demoWallet = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
     setWalletAddress(demoWallet);
     setIsConnected(true);
     checkWalletAadhaarBinding(demoWallet);
   };
+
 
   return (
     <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
