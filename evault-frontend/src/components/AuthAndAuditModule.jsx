@@ -79,17 +79,10 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
         record: matchedLog
       });
     } else {
+      // Return a failure state if the hash/ID doesn't exist!
       setHashVerifyResult({
-        isFound: true,
-        record: {
-          id: 'AUD-BLOCK-' + Math.floor(1000 + Math.random() * 9000),
-          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          action: 'STATE_PROVED_IMMUTABLE',
-          service: 'Audit (8084)',
-          hash: verifyHashInput,
-          status: 'VERIFIED',
-          user: currentUser?.name || 'Verified Blockchain Node'
-        }
+        isFound: false,
+        error: "NO RECORD FOUND ON LEDGER. This hash or ID does not exist in the blockchain audit trail."
       });
     }
   };
@@ -308,7 +301,7 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
               </button>
             </div>
 
-            {hashVerifyResult && (
+            {hashVerifyResult && hashVerifyResult.isFound && (
               <div className="bg-paper-surface border border-paper-border p-3.5 rounded-sm space-y-1 text-paper-ink">
                 <div className="flex items-center space-x-1.5 font-bold text-emerald-800">
                   <CheckCircle size={16} weight="fill" />
@@ -318,6 +311,16 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
                 <p><span className="text-paper-muted">Service:</span> {hashVerifyResult.record.service}</p>
                 <p><span className="text-paper-muted">Hash Digest:</span> {hashVerifyResult.record.hash}</p>
                 <p><span className="text-paper-muted">Verified User:</span> {hashVerifyResult.record.user}</p>
+              </div>
+            )}
+
+            {hashVerifyResult && !hashVerifyResult.isFound && (
+              <div className="bg-red-50 border border-red-300 p-3.5 rounded-sm space-y-1 text-red-900">
+                <div className="flex items-center space-x-1.5 font-bold text-red-800">
+                  <Warning size={16} weight="bold" />
+                  <span>VERIFICATION FAILED</span>
+                </div>
+                <p className="font-mono text-[11px] mt-1">{hashVerifyResult.error}</p>
               </div>
             )}
           </div>
