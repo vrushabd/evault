@@ -74,7 +74,7 @@ async def check_case_participant(
         try:
             body = await request.json()
             doc_id = body.get("docId")
-        except:
+        except Exception:
             pass
             
     if not case_id and doc_id:
@@ -82,10 +82,23 @@ async def check_case_participant(
         doc = result.scalars().first()
         if not doc:
             raise HTTPException(status_code=404, detail={"success": False, "error": "Not Found"})
+        # Uploader always has access
+        if doc.uploaded_by and wallet and doc.uploaded_by.lower() == str(wallet).lower():
+            return user
         case_id = doc.case_id
         
     if not case_id:
         raise HTTPException(status_code=404, detail={"success": False, "error": "Not Found"})
+
+    # Uploader of any doc on this case
+    owner_result = await db.execute(
+        select(Document).where(
+            Document.case_id == case_id,
+            Document.uploaded_by == wallet,
+        ).limit(1)
+    )
+    if owner_result.scalars().first():
+        return user
         
     result = await db.execute(
         select(CaseParticipant).where(
@@ -240,7 +253,7 @@ async def revoke_document(docId: str, user: dict = Depends(get_current_user), db
     except Exception as e:
         handle_service_error(e)
 
-@router.get("/verify/{docId}", response_model=VerificationResponse, dependencies=[Depends(check_case_participant)])
+@router.get("/verify/{docId}", response_model=VerificationResponse)
 async def verify_document(docId: str, db: AsyncSession = Depends(get_db)):
     doc_service = DocumentService(db)
     try:

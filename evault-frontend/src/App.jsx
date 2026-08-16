@@ -12,9 +12,6 @@ import { Sparkle, Buildings, Cpu, ShieldCheck, User, Gavel, FileText } from '@ph
 import { AnimatePresence, motion } from 'framer-motion';
 
 const DEMO_WALLET = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
-const GATEWAY_HOST = import.meta.env.VITE_GATEWAY_URL
-  ? import.meta.env.VITE_GATEWAY_URL.replace(/^https?:\/\//, '')
-  : 'localhost:3000 → gateway';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('classifier');
@@ -133,11 +130,6 @@ export function App() {
             {tabBtn('lawyer-ws', <FileText size={15} weight="bold" />, 'Lawyer Filing')}
             {tabBtn('client-ws', <User size={15} weight="bold" />, 'Citizen Vault')}
           </div>
-
-          <div className="hidden lg:flex items-center space-x-2 px-3 py-1 bg-paper-surface rounded-sm border border-paper-border text-[11px] font-mono text-paper-muted">
-            <span className="w-2 h-2 rounded-full bg-paper-rust"></span>
-            <span>Gateway: {GATEWAY_HOST}</span>
-          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -179,12 +171,10 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <ShieldCheck size={18} weight="bold" className="text-paper-rust" />
-            <span>eVault Legal Microservice Suite · Smart India Hackathon 2026</span>
+            <span>eVault · Secure Legal Document Vault</span>
           </div>
           <div className="flex items-center space-x-3 text-[11px]">
-            <span>Problem Statement: SIH260229</span>
-            <span>·</span>
-            <span>Ministry of Law & Justice</span>
+            <span>Encrypted storage · Blockchain integrity · Role-based access</span>
           </div>
         </div>
       </footer>

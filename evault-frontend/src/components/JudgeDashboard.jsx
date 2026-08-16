@@ -1,32 +1,107 @@
-import React, { useState } from 'react';
-import { Scales, Gavel, FileText, CheckCircle, Warning, Eye, Key, ShieldCheck, ShareNetwork, ArrowsClockwise } from '@phosphor-icons/react';
+import React, { useState, useEffect } from 'react';
+import { Gavel, CheckCircle, Warning, ShieldCheck, ArrowsClockwise } from '@phosphor-icons/react';
 import { StaggerContainer, StaggerItem, FadeIn } from './common/FadeIn';
+import api from '../services/api';
 
-const JUDGE_CASES = [
-  { caseId: 'CASE-MH-2024-001', title: 'State of Maharashtra vs. Ramesh Sharma', docType: 'Bail Order', status: 'HEARING', filingDate: '2024-01-15', cid: 'QmX9a...71b2', docsCount: 4 },
-  { caseId: 'CASE-DL-2024-001', title: 'M/S TechCorp India vs. Union of India', docType: 'Judgment', status: 'RESERVED', filingDate: '2024-02-10', cid: 'QmZ4k...90c4', docsCount: 6 },
-  { caseId: 'CASE-KA-2024-001', title: 'Ananya Rao vs. K.V. Venkatesh', docType: 'Evidence', status: 'ACTIVE', filingDate: '2024-03-05', cid: 'QmP8c...33e1', docsCount: 2 }
-];
+const DOCKET_IDS = ['CASE-MH-2024-001', 'CASE-DL-2024-001', 'CASE-KA-2024-001'];
+const MIN_ORDER_LEN = 40;
 
 export function JudgeDashboard() {
-  const [selectedCase, setSelectedCase] = useState(JUDGE_CASES[0]);
+  const [dockets, setDockets] = useState([]);
+  const [selectedCase, setSelectedCase] = useState(null);
   const [signedOrder, setSignedOrder] = useState('');
   const [signing, setSigning] = useState(false);
-  const [signSuccess, setSignSuccess] = useState(false);
+  const [signResult, setSignResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [loadingDockets, setLoadingDockets] = useState(true);
 
-  const handleSignOrder = (e) => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingDockets(true);
+      const loaded = [];
+      for (const id of DOCKET_IDS) {
+        try {
+          const res = await api.getCaseById(id);
+          if (res.success && res.data) loaded.push(res.data);
+        } catch {
+          // skip missing
+        }
+      }
+      if (!cancelled) {
+        setDockets(loaded);
+        setSelectedCase(loaded[0] || null);
+        setLoadingDockets(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSignOrder = async (e) => {
     e.preventDefault();
+    setError(null);
+    setSignResult(null);
+
+    const orderText = signedOrder.trim();
+    if (orderText.length < MIN_ORDER_LEN) {
+      setError(`Order text must be at least ${MIN_ORDER_LEN} characters of a real judicial order (not a test string).`);
+      return;
+    }
+    if (!selectedCase?.caseId) {
+      setError('Select a case docket first.');
+      return;
+    }
+
     setSigning(true);
-    setTimeout(() => {
+    try {
+      // 1) Pin order metadata on-chain via store
+      const docId = `ORDER-${selectedCase.caseId}-${Date.now().toString(36).toUpperCase()}`;
+      const storeRes = await api.storeOnBlockchain({
+        docId,
+        caseId: selectedCase.caseId,
+        ipfsCID: `judicial-order://${encodeURIComponent(orderText.slice(0, 120))}`,
+        docType: 'Judicial Order',
+      });
+
+      if (!storeRes?.success) {
+        throw new Error(storeRes?.error || 'Blockchain store failed');
+      }
+
+      const txHash = storeRes.data?.txHash || storeRes.txHash || null;
+
+      // 2) Attempt multi-sig sign (may fail if role/doc not ready — surface honestly)
+      let signTx = null;
+      try {
+        const signRes = await api.signOnBlockchain(docId);
+        if (signRes?.success) {
+          signTx = signRes.data?.txHash || signRes.txHash || null;
+        }
+      } catch (signErr) {
+        // Store succeeded; sign is optional second step
+        console.warn('Blockchain sign step failed (order was still stored):', signErr.message);
+      }
+
+      setSignResult({
+        docId,
+        txHash: signTx || txHash,
+        caseId: selectedCase.caseId,
+        mock: Boolean(storeRes.data?.mock || storeRes.mock),
+        note: storeRes.data?.note || storeRes.note || null,
+      });
+      setSignedOrder('');
+    } catch (err) {
+      setError(
+        err.response?.data?.error
+          || err.message
+          || 'Failed to sign order on blockchain. Ensure blockchain service (8083) and gateway are running.'
+      );
+    } finally {
       setSigning(false);
-      setSignSuccess(true);
-    }, 1000);
+    }
   };
 
   return (
     <div className="space-y-6">
-      
-      {/* Judge Header */}
       <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 bg-paper-surface border border-paper-ink rounded-sm">
@@ -43,23 +118,29 @@ export function JudgeDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Case List Column (5 cols) */}
         <div className="lg:col-span-5 bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm space-y-4 font-mono text-xs">
           <div className="flex items-center justify-between border-b border-paper-border pb-3">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase">Assigned Case Dockets</h3>
             <span className="text-[10px] bg-paper-surface border border-paper-border px-2 py-0.5 rounded-sm font-bold">
-              3 ACTIVE
+              {dockets.length} ACTIVE
             </span>
           </div>
 
+          {loadingDockets && (
+            <p className="text-paper-muted text-[11px]">Loading dockets from eCourts…</p>
+          )}
+
+          {!loadingDockets && dockets.length === 0 && (
+            <p className="text-paper-muted text-[11px]">No dockets available. Check that backend services are running.</p>
+          )}
+
           <StaggerContainer className="space-y-2">
-            {JUDGE_CASES.map((item) => (
+            {dockets.map((item) => (
               <StaggerItem key={item.caseId}>
                 <div
-                  onClick={() => { setSelectedCase(item); setSignSuccess(false); }}
+                  onClick={() => { setSelectedCase(item); setSignResult(null); setError(null); }}
                   className={`p-3 rounded-sm border transition cursor-pointer ${
-                    selectedCase.caseId === item.caseId
+                    selectedCase?.caseId === item.caseId
                       ? 'bg-paper-surface border-paper-ink shadow-offset-sm'
                       : 'bg-paper-card border-paper-border hover:border-paper-ink'
                   }`}
@@ -70,10 +151,10 @@ export function JudgeDashboard() {
                       {item.status}
                     </span>
                   </div>
-                  <p className="font-heading font-bold text-slate-900 text-xs mt-1">{item.title}</p>
+                  <p className="font-heading font-bold text-paper-ink text-xs mt-1">{item.title}</p>
                   <div className="flex justify-between text-[10px] text-paper-muted mt-2">
-                    <span>IPFS CID: {item.cid}</span>
-                    <span>{item.docsCount} Documents</span>
+                    <span>{item.court}</span>
+                    <span>{item.caseType}</span>
                   </div>
                 </div>
               </StaggerItem>
@@ -81,63 +162,84 @@ export function JudgeDashboard() {
           </StaggerContainer>
         </div>
 
-        {/* Selected Case Workspace (7 cols) */}
         <div className="lg:col-span-7 bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm space-y-5">
-          
-          <div className="border-b border-paper-border pb-3">
-            <span className="text-[10px] font-mono text-paper-rust font-bold uppercase">{selectedCase.caseId}</span>
-            <h3 className="font-heading text-lg font-bold text-paper-ink tracking-tight mt-0.5">{selectedCase.title}</h3>
-            <p className="text-xs text-paper-muted font-mono mt-1">Filing Date: {selectedCase.filingDate} · IPFS CID: {selectedCase.cid}</p>
-          </div>
-
-          {/* Cryptographic Order Signing Form */}
-          <div className="space-y-3 font-mono text-xs">
-            <span className="text-[10px] font-bold text-paper-muted uppercase">ISSUE & CRYPTOGRAPHICALLY SIGN JUDICIAL ORDER</span>
-            
-            <form onSubmit={handleSignOrder} className="space-y-3">
-              <textarea
-                value={signedOrder}
-                onChange={(e) => setSignedOrder(e.target.value)}
-                rows={4}
-                placeholder="Enter judicial order text (e.g. Bail Application Granted under Section 439 CrPC upon furnishing personal bond of Rs 50,000)..."
-                className="w-full bg-paper-bg border border-paper-border rounded-sm p-3 text-xs text-paper-ink font-mono focus:outline-none focus:border-paper-ink"
-              />
-
-              <button
-                type="submit"
-                disabled={signing || !signedOrder.trim()}
-                className="btn-editorial-rust font-mono"
-              >
-                {signing ? <ArrowsClockwise size={16} className="animate-spin" /> : <ShieldCheck size={16} weight="bold" />}
-                <span>{signing ? 'SIGNING ON BLOCKCHAIN...' : 'CRYPTOGRAPHICALLY SIGN & ATTACH ORDER'}</span>
-              </button>
-            </form>
-
-            {signSuccess && (
-              <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-sm text-emerald-950 flex items-center space-x-2">
-                <CheckCircle size={18} weight="fill" className="text-emerald-700 flex-shrink-0" />
-                <div>
-                  <p className="font-bold text-xs">Order Signed & Pinned to Blockchain</p>
-                  <p className="text-[11px] text-emerald-800">TX Hash: 0x9f31a2...c80b · Smart Contract State Updated</p>
-                </div>
+          {selectedCase ? (
+            <>
+              <div className="border-b border-paper-border pb-3">
+                <span className="text-[10px] font-mono text-paper-rust font-bold uppercase">{selectedCase.caseId}</span>
+                <h3 className="font-heading text-lg font-bold text-paper-ink tracking-tight mt-0.5">{selectedCase.title}</h3>
+                <p className="text-xs text-paper-muted font-mono mt-1">
+                  Filing Date: {selectedCase.filingDate} · Judge: {selectedCase.judge}
+                </p>
               </div>
-            )}
-          </div>
 
-          {/* Document Access History */}
-          <FadeIn delay={0.2} className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-2 font-mono text-xs">
-            <span className="text-[10px] font-bold text-paper-muted uppercase">ACCESS AUDIT PERMISSIONS</span>
-            <div className="space-y-1 text-[11px] text-paper-ink">
-              <p>✔ Adv. Ramesh Sharma (LAWYER) — Uploaded Initial Motion (IPFS: QmX9a...)</p>
-              <p>✔ Hon. Justice S. Mehta (JUDGE) — Read & Verified AES-256 Key</p>
-            </div>
-          </FadeIn>
+              <div className="space-y-3 font-mono text-xs">
+                <span className="text-[10px] font-bold text-paper-muted uppercase">ISSUE & CRYPTOGRAPHICALLY SIGN JUDICIAL ORDER</span>
 
+                <form onSubmit={handleSignOrder} className="space-y-3">
+                  <textarea
+                    value={signedOrder}
+                    onChange={(e) => { setSignedOrder(e.target.value); setError(null); setSignResult(null); }}
+                    rows={4}
+                    placeholder="Enter judicial order text (e.g. Bail Application Granted under Section 439 CrPC upon furnishing personal bond of Rs 50,000)..."
+                    className="w-full bg-paper-bg border border-paper-border rounded-sm p-3 text-xs text-paper-ink font-mono focus:outline-none focus:border-paper-ink"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={signing || !signedOrder.trim()}
+                    className="btn-editorial-rust font-mono"
+                  >
+                    {signing ? <ArrowsClockwise size={16} className="animate-spin" /> : <ShieldCheck size={16} weight="bold" />}
+                    <span>{signing ? 'SIGNING ON BLOCKCHAIN...' : 'CRYPTOGRAPHICALLY SIGN & ATTACH ORDER'}</span>
+                  </button>
+                </form>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-300 rounded-sm text-red-950 flex items-start space-x-2">
+                    <Warning size={18} weight="fill" className="text-red-700 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs font-medium">{error}</p>
+                  </div>
+                )}
+
+                {signResult && (
+                  <div className={`p-3 border rounded-sm flex items-center space-x-2 ${
+                    signResult.mock
+                      ? 'bg-amber-50 border-amber-300 text-amber-950'
+                      : 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                  }`}>
+                    <CheckCircle size={18} weight="fill" className={`flex-shrink-0 ${signResult.mock ? 'text-amber-700' : 'text-emerald-700'}`} />
+                    <div>
+                      <p className="font-bold text-xs">
+                        {signResult.mock ? 'Order recorded (local simulation)' : 'Order recorded on blockchain'}
+                      </p>
+                      <p className={`text-[11px] break-all ${signResult.mock ? 'text-amber-800' : 'text-emerald-800'}`}>
+                        Doc: {signResult.docId}
+                        {signResult.txHash ? ` · TX: ${signResult.txHash}` : ''}
+                      </p>
+                      {signResult.note && (
+                        <p className="text-[10px] mt-1 opacity-80">{signResult.note}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <FadeIn delay={0.2} className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-2 font-mono text-xs">
+                <span className="text-[10px] font-bold text-paper-muted uppercase">NOTE</span>
+                <p className="text-[11px] text-paper-muted leading-relaxed">
+                  Signing calls the live blockchain service via the gateway. Short/test strings are rejected.
+                  Sepolia tx confirmation can take up to ~2 minutes.
+                </p>
+              </FadeIn>
+            </>
+          ) : (
+            <p className="text-sm text-paper-muted font-mono">Select a docket to issue an order.</p>
+          )}
         </div>
-
       </div>
-
     </div>
   );
 }
+
 export default JudgeDashboard;

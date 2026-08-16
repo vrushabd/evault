@@ -9,7 +9,7 @@ const SERVICES = [
   { id: 5, name: 'Audit Service', tech: 'Spring Boot + MySQL', port: 8084, status: 'Active', desc: 'Tamper-evident access audit log' },
   { id: 6, name: 'Notification Service', tech: 'Spring Boot + Mail', port: 8085, status: 'Active', desc: 'Bail & hearing alert dispatch' },
   { id: 7, name: 'Integration Service', tech: 'Python + FastAPI + Gemini', port: 8086, status: 'ONLINE', isCurrent: true, desc: 'eCourts mock, Gemini AI classifier, Aadhaar binding' },
-  { id: 8, name: 'Web Frontend', tech: 'React + Tailwind + Ethers.js', port: 3000, status: 'ONLINE', desc: 'SIH 2026 Judge & Citizen Portal' },
+  { id: 8, name: 'Web Frontend', tech: 'React + Tailwind + Ethers.js', port: 3000, status: 'ONLINE', desc: 'Judge & Citizen Portal' },
 ];
 
 export function VaultOverview() {
@@ -23,12 +23,12 @@ export function VaultOverview() {
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">04 / SYSTEM ARCHITECTURE MANIFEST</span>
             <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">eVault Microservices Topology</h2>
             <p className="text-xs text-paper-muted mt-1 font-body">
-              Problem Statement SIH260229 (Ministry of Law and Justice)
+              Tamper-evident legal document microservices
             </p>
           </div>
           <div className="flex items-center space-x-2 bg-paper-surface border border-paper-border px-3 py-1.5 rounded-sm text-paper-ink font-mono text-xs font-bold">
             <CheckCircle size={16} weight="fill" className="text-paper-rust" />
-            <span>SIH260229 VERIFIED</span>
+            <span>SYSTEM VERIFIED</span>
           </div>
         </div>
       </div>
@@ -66,7 +66,7 @@ export function VaultOverview() {
       <div className="bg-paper-card border border-paper-border rounded-sm p-6 shadow-offset-sm space-y-4">
         <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
           <Database size={18} weight="bold" className="text-paper-rust" />
-          <span>Integration Service (Port 8086) Component Manifest</span>
+          <span>Integration Service Component Manifest</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">

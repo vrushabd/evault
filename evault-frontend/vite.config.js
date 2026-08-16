@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
         '/blockchain': { target: gateway, changeOrigin: true },
         '/audit': { target: gateway, changeOrigin: true },
         '/notify': { target: gateway, changeOrigin: true },
+        '/actuator': { target: gateway, changeOrigin: true },
       },
     },
   }

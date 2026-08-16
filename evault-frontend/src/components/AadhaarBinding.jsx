@@ -231,7 +231,7 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
             <ul className="text-xs text-paper-muted space-y-1 list-disc list-inside font-body">
               <li>Irreversible SHA-256 one-way hashing protocol.</li>
               <li>Protects citizen identity privacy while proving unique identity ownership.</li>
-              <li>Fully compatible with Ethereum smart contracts & SIH 2026 legal audit trail.</li>
+              <li>Compatible with Ethereum smart contracts and the legal audit trail.</li>
             </ul>
           </div>
         </div>

@@ -222,6 +222,27 @@ export const api = {
     const res = await docClient.get(`/api/documents/verify/${encodeURIComponent(docId)}`);
     return res.data;
   },
+
+  // =========================================================
+  // Blockchain (via Gateway)
+  // =========================================================
+  storeOnBlockchain: async ({ docId, caseId, ipfsCID, docType }) => {
+    const res = await apiClient.post(
+      '/blockchain/store',
+      { docId, caseId, ipfsCID, docType },
+      { timeout: 180000 }
+    );
+    return res.data;
+  },
+
+  signOnBlockchain: async (docId) => {
+    const res = await apiClient.post(
+      '/blockchain/sign',
+      { docId },
+      { timeout: 180000 }
+    );
+    return res.data;
+  },
 };
 
 export default api;
