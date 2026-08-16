@@ -42,13 +42,6 @@ const AUDIT_LOGS = [
   },
 ];
 
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  const bytes = Array.from(new Uint8Array(digest));
-  return '0x' + bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 export function AuthAndAuditModule({ currentUser, walletAddress, onLoginSuccess, onLogout }) {
   const [authMode, setAuthMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -59,12 +52,10 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLoginSuccess,
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [auditLogs, setAuditLogs] = useState(AUDIT_LOGS);
+  const [auditLogs] = useState(AUDIT_LOGS);
 
   const [verifyHashInput, setVerifyHashInput] = useState('');
   const [hashVerifyResult, setHashVerifyResult] = useState(null);
-  const [hashSource, setHashSource] = useState('');
-  const [computedHash, setComputedHash] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -133,27 +124,9 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLoginSuccess,
     } else {
       setHashVerifyResult({
         isFound: false,
-        error: 'No matching record found. Use an Audit Log ID from the stream below, click a row, or paste a full hash digest.',
+        error: 'No matching record found. Use an Audit Log ID from the stream below, or click a row to verify.',
       });
     }
-  };
-
-  const handleComputeHash = async () => {
-    if (!hashSource.trim()) return;
-    const digest = await sha256Hex(hashSource.trim());
-    const newLog = {
-      id: `AUD-${Math.floor(10000 + Math.random() * 90000)}`,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      action: 'DOCUMENT_HASHED',
-      service: 'Audit',
-      hash: digest,
-      status: 'VERIFIED',
-      user: currentUser?.name || currentUser?.email || 'Current user',
-    };
-    setAuditLogs((prev) => [newLog, ...prev]);
-    setComputedHash(digest);
-    setVerifyHashInput(digest);
-    setHashVerifyResult({ isFound: true, record: newLog });
   };
 
   const useLogForVerify = (log) => {
@@ -347,7 +320,7 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLoginSuccess,
             </h3>
 
             <p className="text-[11px] text-paper-muted font-body leading-relaxed">
-              Verify an existing ledger entry (click a row below), or hash document text to record a new digest on the stream, then verify it.
+              Paste an audit log ID (e.g. <code className="text-paper-ink">AUD-88101</code>) or click a row in the stream below to verify.
             </p>
 
             <div className="flex gap-2">
@@ -355,33 +328,12 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLoginSuccess,
                 type="text"
                 value={verifyHashInput}
                 onChange={(e) => setVerifyHashInput(e.target.value)}
-                placeholder="Audit Log ID or SHA-256 hash…"
+                placeholder="Audit Log ID or hash…"
                 className="w-full bg-paper-bg border border-paper-border rounded-sm px-3 py-2 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
               />
               <button type="button" onClick={handleVerifyHash} className="btn-editorial font-mono">
                 VERIFY
               </button>
-            </div>
-
-            <div className="bg-paper-surface border border-paper-border p-3 rounded-sm space-y-2">
-              <label className="block text-[10px] text-paper-muted uppercase font-bold">
-                Hash text &amp; record on audit stream
-              </label>
-              <textarea
-                value={hashSource}
-                onChange={(e) => setHashSource(e.target.value)}
-                rows={2}
-                placeholder="Paste document text to fingerprint…"
-                className="w-full bg-paper-bg border border-paper-border rounded-sm p-2 text-[11px] text-paper-ink focus:outline-none focus:border-paper-ink"
-              />
-              <button type="button" onClick={handleComputeHash} className="btn-editorial font-mono text-[11px]">
-                HASH &amp; RECORD
-              </button>
-              {computedHash && (
-                <p className="text-[10px] break-all text-paper-ink">
-                  <span className="text-paper-muted">Recorded digest: </span>{computedHash}
-                </p>
-              )}
             </div>
 
             {hashVerifyResult?.isFound && (
