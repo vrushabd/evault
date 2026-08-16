@@ -22,8 +22,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:zencultstore@gmail.com}
-    password: ${MAIL_PASSWORD:xwsmdgkpycgzkoxw}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -31,7 +31,7 @@ spring:
           starttls:
             enable: true
 
-# From address used in outgoing emails
+# From address used in outgoing emails — set MAIL_* env vars in production
 evault:
   mail:
     from: ${MAIL_FROM:noreply@evault.gov.in}

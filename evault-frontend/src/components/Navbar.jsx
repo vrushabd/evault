@@ -39,11 +39,11 @@ export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarSta
             {theme === 'dark' ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
           </button>
 
-          {/* Microservice Health */}
+          {/* Gateway status label */}
           <div className="hidden md:flex items-center space-x-2 bg-paper-surface border border-paper-border px-3 py-1.5 rounded-sm text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-paper-rust"></span>
-            <span className="text-paper-muted">Integration 8086:</span>
-            <span className="text-paper-ink font-semibold">ONLINE</span>
+            <span className="text-paper-muted">Gateway:</span>
+            <span className="text-paper-ink font-semibold">8080</span>
           </div>
 
           {/* Aadhaar Binding Pill */}

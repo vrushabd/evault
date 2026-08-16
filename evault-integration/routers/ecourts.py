@@ -7,13 +7,18 @@ router = APIRouter(prefix="/ecourts", tags=["eCourts Mock"])
 
 @router.get("/case/{case_id}")
 async def get_case_details(case_id: str):
-    """Returns mock case details for a given case ID."""
+    """Returns mock case details for a known case ID (404 if unknown)."""
     try:
         case_data = ecourts_service.get_case_by_id(case_id)
         return {
             "success": True,
             "data": case_data
         }
+    except KeyError:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "error": f"Case not found: {case_id}. Try CASE-MH-2024-001, CASE-DL-2024-001, or CASE-KA-2024-001."}
+        )
     except Exception as e:
         return JSONResponse(
             status_code=500,

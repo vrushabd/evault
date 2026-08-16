@@ -1,10 +1,10 @@
 import React from 'react';
-import { ShareNetwork, Database, CheckCircle } from '@phosphor-icons/react';
+import { Database, CheckCircle } from '@phosphor-icons/react';
 
 const SERVICES = [
   { id: 1, name: 'API Gateway', tech: 'Spring Cloud Gateway', port: 8080, status: 'Active', desc: 'Central routing & rate limiting' },
   { id: 2, name: 'Auth Service', tech: 'Spring Boot + MySQL', port: 8081, status: 'Active', desc: 'JWT user authentication & roles' },
-  { id: 3, name: 'Document Service', tech: 'Spring Boot + MySQL', port: 8082, status: 'Active', desc: 'Legal record metadata vault' },
+  { id: 3, name: 'Document Service', tech: 'Python FastAPI + MySQL + Pinata IPFS', port: 8082, status: 'Active', desc: 'Encrypted legal document vault & metadata' },
   { id: 4, name: 'Blockchain Service', tech: 'Node.js + ethers.js', port: 8083, status: 'Active', desc: 'Smart contract state pinning' },
   { id: 5, name: 'Audit Service', tech: 'Spring Boot + MySQL', port: 8084, status: 'Active', desc: 'Tamper-evident access audit log' },
   { id: 6, name: 'Notification Service', tech: 'Spring Boot + Mail', port: 8085, status: 'Active', desc: 'Bail & hearing alert dispatch' },

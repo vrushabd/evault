@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileText, UploadSimple, ShareNetwork, Sparkle, LockKey, CheckCircle, Warning, ArrowsClockwise, Key } from '@phosphor-icons/react';
 import api from '../services/api';
 
-export function LawyerDashboard() {
+export function LawyerDashboard({ currentUser }) {
   const [caseId, setCaseId] = useState('CASE-MH-2024-001');
   const [docType, setDocType] = useState('Bail Order');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -12,6 +12,10 @@ export function LawyerDashboard() {
   const [uploadResult, setUploadResult] = useState(null);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [error, setError] = useState(null);
+
+  const displayName = currentUser?.name || 'Advocate';
+  const bar = currentUser?.barNumber || '—';
+  const role = currentUser?.role || 'LAWYER';
 
   const handleUploadAndEncrypt = async (e) => {
     e.preventDefault();
@@ -23,7 +27,6 @@ export function LawyerDashboard() {
     setUploading(true);
     setError(null);
     try {
-      // 1. Run AI Classifier via Integration Service (Port 8086)
       let classifyRes = { data: null };
       try {
          classifyRes = await api.classifyDocument(selectedFile);
@@ -32,8 +35,6 @@ export function LawyerDashboard() {
       }
       
       const predictedType = classifyRes.data?.documentType || docType;
-
-      // 2. Upload to Document Service (Port 8082)
       const uploadRes = await api.uploadDocument(selectedFile, caseId, predictedType);
 
       setUploadResult({
@@ -41,12 +42,17 @@ export function LawyerDashboard() {
         caseId: uploadRes.case_id,
         docType: uploadRes.doc_type,
         ipfsCid: uploadRes.ipfs_cid,
-        txHash: uploadRes.txHash || '0xPendingBlockchainTx...',
+        txHash: uploadRes.txHash || uploadRes.tx_hash || 'Pending blockchain confirmation',
         encryptionKey: 'AES-256-GCM-ENCRYPTED',
         classification: classifyRes.data || { documentType: predictedType, confidence: 0.99 }
       });
     } catch (err) {
-      setError(err.message || "Failed to process document.");
+      setError(
+        err.response?.data?.detail?.error
+          || err.response?.data?.error
+          || err.message
+          || "Failed to process document."
+      );
     } finally {
       setUploading(false);
     }
@@ -55,17 +61,17 @@ export function LawyerDashboard() {
   const handleShareDoc = async (e) => {
     e.preventDefault();
     if (!shareWallet.trim()) return;
-    
-    // If no document uploaded yet, simulate success for demo purposes, 
-    // but ideally we'd pass uploadResult.docId
-    const targetDocId = uploadResult?.docId || "DOC-DEMO-1234";
+    if (!uploadResult?.docId) {
+      setError("Upload a document before sharing.");
+      return;
+    }
     
     try {
-      await api.shareDocument(targetDocId, shareWallet);
+      await api.shareDocument(uploadResult.docId, shareWallet);
       setShareSuccess(true);
       setTimeout(() => setShareSuccess(false), 4000);
     } catch (err) {
-      setError("Failed to share document via API");
+      setError(err.response?.data?.detail?.error || err.message || "Failed to share document via API");
     }
   };
 
@@ -80,9 +86,9 @@ export function LawyerDashboard() {
           </div>
           <div>
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">ADVOCATE WORKSPACE</span>
-            <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">Adv. Ramesh Sharma — Legal Vault Filing</h2>
+            <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">{displayName} — Legal Vault Filing</h2>
             <p className="text-xs text-paper-muted font-body">
-              Bar Council Reg: <strong className="text-paper-ink font-mono">MAH-10492-2020</strong> · Role: <strong className="text-paper-rust">LAWYER</strong>
+              Bar Council Reg: <strong className="text-paper-ink font-mono">{bar}</strong> · Role: <strong className="text-paper-rust">{role}</strong>
             </p>
           </div>
         </div>

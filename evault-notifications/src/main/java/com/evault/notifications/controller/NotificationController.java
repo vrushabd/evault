@@ -53,4 +53,12 @@ public class NotificationController {
         NotificationResponse response = notificationService.markAsRead(id);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<java.util.Map<String, String>> health() {
+        return ResponseEntity.ok(java.util.Map.of(
+                "status", "UP",
+                "service", "evault-notifications"
+        ));
+    }
 }

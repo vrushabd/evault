@@ -38,12 +38,12 @@ def test_ecourts_case_known():
     assert data["data"]["caseType"] == "Criminal"
 
 
-def test_ecourts_case_dynamic():
+def test_ecourts_case_unknown():
     response = client.get("/ecourts/case/CASE-UNKNOWN-999")
-    assert response.status_code == 200
+    assert response.status_code == 404
     data = response.json()
-    assert data["success"] is True
-    assert data["data"]["caseId"] == "CASE-UNKNOWN-999"
+    assert data["success"] is False
+    assert "not found" in data["error"].lower()
 
 
 def test_ecourts_courts():

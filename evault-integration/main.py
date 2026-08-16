@@ -24,10 +24,19 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS (explicit origins required for browser security)
+# Configure CORS for direct browser access. When traffic comes only via gateway,
+# duplicate ACAO headers can break the browser — prefer Vite proxy / gateway CORS.
+_cors_origins = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -23,13 +23,20 @@ export function ClientDashboard({ walletAddress }) {
       setVerifyResult({
         isTampered: result.tampered || false,
         docId: result.docId || verifyDocId,
-        ipfsCid: result.ipfsCid || 'QmP8c...33e1',
-        txHash: result.txHash,
+        ipfsCid: result.ipfsCid || result.ipfs_cid || '—',
+        txHash: result.txHash || result.tx_hash,
         blockchainStatus: result.tampered ? 'TAMPERED — MISMATCH DETECTED' : 'MATCHED (100% UNALTERED)',
         timestamp: new Date().toISOString()
       });
     } catch (err) {
-      setVerifyResult({ isTampered: false, docId: verifyDocId, ipfsCid: 'QmP8c...33e1', blockchainStatus: 'MATCHED (100% UNALTERED)', timestamp: new Date().toISOString() });
+      setVerifyResult({
+        isTampered: true,
+        docId: verifyDocId,
+        ipfsCid: '—',
+        blockchainStatus: 'VERIFICATION FAILED — SERVICE UNAVAILABLE OR DOCUMENT NOT FOUND',
+        timestamp: new Date().toISOString(),
+        error: err.response?.data?.error || err.message,
+      });
     } finally {
       setVerifying(false);
     }
@@ -48,7 +55,7 @@ export function ClientDashboard({ walletAddress }) {
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">CITIZEN PORTAL</span>
             <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">Priya Verma — My Legal Vault</h2>
             <p className="text-xs text-paper-muted font-body">
-              Bound Wallet: <strong className="text-paper-ink">{walletAddress || '0x71C7...8976F'}</strong> · Role: <strong className="text-paper-rust">CLIENT</strong>
+              Bound Wallet: <strong className="text-paper-ink">{walletAddress || 'Not connected'}</strong> · Role: <strong className="text-paper-rust">CLIENT</strong>
             </p>
           </div>
         </div>

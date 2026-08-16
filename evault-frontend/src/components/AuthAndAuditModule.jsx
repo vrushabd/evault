@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, ShieldCheck, Lock, FileText, CheckCircle, Warning, ArrowsClockwise, Key, Fingerprint, Globe } from '@phosphor-icons/react';
 import api from '../services/api';
 
@@ -9,17 +9,17 @@ const MOCK_AUDIT_LOGS = [
   { id: 'AUD-88104', timestamp: '2026-08-15 21:40:02', action: 'JWT_AUTH_LOGIN', service: 'Auth (8081)', hash: '0x7c92...09ef', status: 'VERIFIED', user: 'Adv. Ramesh Sharma (LAWYER)' },
 ];
 
-export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
+export function AuthAndAuditModule({ currentUser, walletAddress, onLoginSuccess, onLogout }) {
   const [authMode, setAuthMode] = useState('login');
-  const [email, setEmail] = useState('lawyer.sharma@evault.in');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('LAWYER');
-  const [name, setName] = useState('Adv. Ramesh Sharma');
-  const [barNumber, setBarNumber] = useState('MAH-10492-2020');
+  const [name, setName] = useState('');
+  const [barNumber, setBarNumber] = useState('');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [auditLogs, setAuditLogs] = useState(MOCK_AUDIT_LOGS);
+  const [auditLogs] = useState(MOCK_AUDIT_LOGS);
   
   const [verifyHashInput, setVerifyHashInput] = useState('');
   const [hashVerifyResult, setHashVerifyResult] = useState(null);
@@ -27,7 +27,7 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError("Please enter email and password.");
+      setError('Please enter email and password.');
       return;
     }
 
@@ -38,10 +38,10 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
       if (response.success) {
         onLoginSuccess(response.data.user);
       } else {
-        setError(response.error || "Login failed.");
+        setError(response.error || 'Login failed.');
       }
     } catch (err) {
-      setError(err.message || "Failed to authenticate.");
+      setError(err.message || 'Failed to authenticate.');
     } finally {
       setLoading(false);
     }
@@ -50,21 +50,28 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!email || !name) {
-      setError("Please fill out all registration fields.");
+      setError('Please fill out all registration fields.');
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const response = await api.register({ name, email, password, role, barNumber });
+      const response = await api.register({
+        name,
+        email,
+        password,
+        role,
+        barNumber,
+        walletAddress: walletAddress || undefined,
+      });
       if (response.success) {
         onLoginSuccess(response.data.user);
       } else {
-        setError(response.error || "Registration failed.");
+        setError(response.error || 'Registration failed.');
       }
     } catch (err) {
-      setError(err.message || "Failed to register user.");
+      setError(err.response?.data?.message || err.message || 'Failed to register user.');
     } finally {
       setLoading(false);
     }
@@ -97,7 +104,9 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">05 / AUTHENTICATION & AUDIT TRAIL</span>
             <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">eVault Security & Audit Microservices</h2>
             <p className="text-xs text-paper-muted mt-1 font-body">
-              Integrates Auth Service (<code className="text-paper-ink font-mono">Port 8081</code>) & Audit Blockchain Service (<code className="text-paper-ink font-mono">Port 8084</code>)
+              Wallet JWT auth via Gateway (<code className="text-paper-ink font-mono">:8080 → Auth :8081</code>)
+              &amp; Audit Service (<code className="text-paper-ink font-mono">:8084</code>).
+              Email/password below is demo-only; production login uses MetaMask.
             </p>
           </div>
 
@@ -203,7 +212,7 @@ export function AuthAndAuditModule({ currentUser, onLoginSuccess, onLogout }) {
                 className="btn-editorial-rust font-mono w-full"
               >
                 {loading ? <ArrowsClockwise size={16} className="animate-spin" /> : <Lock size={16} weight="bold" />}
-                <span>{loading ? 'AUTHENTICATING...' : 'AUTHENTICATE (PORT 8081)'}</span>
+                <span>{loading ? 'AUTHENTICATING...' : 'DEMO LOGIN'}</span>
               </button>
             </form>
           ) : (

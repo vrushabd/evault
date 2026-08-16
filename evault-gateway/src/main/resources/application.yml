@@ -1,17 +1,20 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: evault-gateway
   cloud:
     gateway:
+      default-filters:
+        # Downstream services also set CORS; keep gateway's headers only
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers, RETAIN_FIRST
       globalcors:
         corsConfigurations:
           '[/**]':
             allowedOrigins:
-              - "http://localhost:3000"
-              - "http://127.0.0.1:3000"
+              - "${CORS_ORIGIN_1:http://localhost:3000}"
+              - "${CORS_ORIGIN_2:http://127.0.0.1:3000}"
             allowedMethods:
               - GET
               - POST
@@ -24,35 +27,35 @@ spring:
             maxAge: 3600
       routes:
         - id: auth-service
-          uri: http://localhost:8081
+          uri: ${AUTH_SERVICE_URI:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
         - id: document-service
-          uri: http://localhost:8082
+          uri: ${DOCUMENT_SERVICE_URI:http://localhost:8082}
           predicates:
             - Path=/api/documents/**
         - id: blockchain-service
-          uri: http://localhost:8083
+          uri: ${BLOCKCHAIN_SERVICE_URI:http://localhost:8083}
           predicates:
             - Path=/blockchain/**
         - id: audit-service
-          uri: http://localhost:8084
+          uri: ${AUDIT_SERVICE_URI:http://localhost:8084}
           predicates:
             - Path=/audit/**
         - id: notification-service
-          uri: http://localhost:8085
+          uri: ${NOTIFICATION_SERVICE_URI:http://localhost:8085}
           predicates:
-            - Path=/notify/**
+            - Path=/api/notifications/**
         - id: integration-ecourts
-          uri: http://localhost:8086
+          uri: ${INTEGRATION_SERVICE_URI:http://localhost:8086}
           predicates:
             - Path=/ecourts/**
         - id: integration-classify
-          uri: http://localhost:8086
+          uri: ${INTEGRATION_SERVICE_URI:http://localhost:8086}
           predicates:
             - Path=/classify/**
         - id: integration-aadhaar
-          uri: http://localhost:8086
+          uri: ${INTEGRATION_SERVICE_URI:http://localhost:8086}
           predicates:
             - Path=/aadhaar/**
 

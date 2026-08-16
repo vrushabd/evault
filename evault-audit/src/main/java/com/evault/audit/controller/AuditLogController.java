@@ -6,6 +6,7 @@ import com.evault.audit.model.AuditLog;
 import com.evault.audit.repository.AuditLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -24,6 +25,9 @@ public class AuditLogController {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Value("${evault.blockchain.url:http://localhost:8083}")
+    private String blockchainBaseUrl;
 
     @PostMapping("/log")
     public ResponseEntity<ApiResponse<AuditLog>> logAction(@RequestBody AuditRequest request, HttpServletRequest httpRequest) {
@@ -68,8 +72,11 @@ public class AuditLogController {
         try {
             long dbCount = repository.countByDocId(docId);
             
-            // Call Blockchain service running on Node.js port 8083
-            String blockchainUrl = "http://localhost:8083/blockchain/audit/" + docId;
+            String base = blockchainBaseUrl.endsWith("/")
+                    ? blockchainBaseUrl.substring(0, blockchainBaseUrl.length() - 1)
+                    : blockchainBaseUrl;
+            String blockchainUrl = base + "/blockchain/audit/" + docId;
+            @SuppressWarnings("unchecked")
             Map<String, Object> bcResponse = restTemplate.getForObject(blockchainUrl, Map.class);
             
             long bcCount = 0;

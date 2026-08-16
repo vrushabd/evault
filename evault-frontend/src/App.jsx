@@ -3,27 +3,25 @@ import Navbar from './components/Navbar';
 import ClassifierModule from './components/ClassifierModule';
 import ECourtsLookup from './components/ECourtsLookup';
 import AadhaarBinding from './components/AadhaarBinding';
-import VaultOverview from './components/VaultOverview';
 import AuthAndAuditModule from './components/AuthAndAuditModule';
 import JudgeDashboard from './components/JudgeDashboard';
 import LawyerDashboard from './components/LawyerDashboard';
 import ClientDashboard from './components/ClientDashboard';
 import api from './services/api';
-import { Sparkle, Buildings, Cpu, ShareNetwork, ShieldCheck, User, Gavel, FileText } from '@phosphor-icons/react';
+import { Sparkle, Buildings, Cpu, ShieldCheck, User, Gavel, FileText } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FadeIn } from './components/common/FadeIn';
+
+const DEMO_WALLET = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+const GATEWAY_HOST = import.meta.env.VITE_GATEWAY_URL
+  ? import.meta.env.VITE_GATEWAY_URL.replace(/^https?:\/\//, '')
+  : 'localhost:3000 → gateway';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('classifier');
-  const [walletAddress, setWalletAddress] = useState('0x71C7656EC7ab88b098defB751B7401B5f6d8976F');
-  const [isConnected, setIsConnected] = useState(true);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
   const [aadhaarStatus, setAadhaarStatus] = useState(null);
-  const [currentUser, setCurrentUser] = useState({
-    name: 'Adv. Ramesh Sharma',
-    email: 'lawyer.sharma@evault.in',
-    role: 'LAWYER',
-    barNumber: 'MAH-10492-2020'
-  });
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     if (walletAddress) {
@@ -38,50 +36,53 @@ export function App() {
         setAadhaarStatus(res.data);
       }
     } catch (e) {
-      console.warn("Could not verify wallet Aadhaar binding:", e);
+      console.warn('Could not verify wallet Aadhaar binding:', e);
     }
+  };
+
+  const applyRoleToUser = (address, role, fallbackRole = 'CLIENT') => {
+    const resolved = typeof role === 'string' && role ? role : fallbackRole;
+    setCurrentUser({
+      walletAddress: address,
+      role: resolved,
+      name: `${address.substring(0, 10)}...`,
+    });
   };
 
   const handleConnectWallet = async () => {
     if (window.ethereum) {
       try {
-        // Step 1: Request wallet address from MetaMask
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         if (accounts.length > 0) {
           const address = accounts[0];
 
           try {
-            // Step 2: Get a one-time nonce from evault-auth backend
             const nonce = await api.getNonce(address);
-
-            // Step 3: Ask MetaMask to sign the nonce (proves ownership of wallet)
             const signature = await window.ethereum.request({
               method: 'personal_sign',
               params: [nonce, address],
             });
 
-            // Step 4: Send wallet + nonce + signature to backend → receive real JWT
             const loginResult = await api.walletLogin(address, nonce, signature);
             localStorage.setItem('evault-token', loginResult.token);
 
             setWalletAddress(address);
             setIsConnected(true);
 
-            // Step 5: Fetch user role from backend
             try {
               const role = await api.getUserRole(address);
-              setCurrentUser({ walletAddress: address, role, name: address.substring(0, 10) + '...' });
+              applyRoleToUser(address, role, loginResult.role || 'CLIENT');
             } catch {
-              setCurrentUser({ walletAddress: address, role: loginResult.role || 'CLIENT', name: address.substring(0, 10) + '...' });
+              applyRoleToUser(address, loginResult.role, 'CLIENT');
             }
 
             checkWalletAadhaarBinding(address);
             return;
           } catch (authErr) {
             console.warn('JWT auth failed, wallet not registered or backend offline:', authErr);
-            // Wallet connected but not authenticated — still set address for demo
             setWalletAddress(address);
             setIsConnected(true);
+            applyRoleToUser(address, null, 'CLIENT');
             checkWalletAadhaarBinding(address);
             return;
           }
@@ -91,18 +92,29 @@ export function App() {
       }
     }
 
-    // Fallback: demo wallet for testing without MetaMask
-    const demoWallet = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
-    setWalletAddress(demoWallet);
+    setWalletAddress(DEMO_WALLET);
     setIsConnected(true);
-    checkWalletAadhaarBinding(demoWallet);
+    applyRoleToUser(DEMO_WALLET, 'LAWYER');
+    checkWalletAadhaarBinding(DEMO_WALLET);
   };
 
+  const tabBtn = (id, icon, label) => (
+    <button
+      key={id}
+      onClick={() => setActiveTab(id)}
+      className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
+        activeTab === id
+          ? 'bg-paper-rust text-white font-bold'
+          : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
 
   return (
     <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
-      
-      {/* Navbar Header */}
       <Navbar
         walletAddress={walletAddress}
         isConnected={isConnected}
@@ -110,110 +122,24 @@ export function App() {
         aadhaarStatus={aadhaarStatus}
       />
 
-      {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
-        
-        {/* Module & Workspace Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-paper-card border border-paper-border p-1.5 shadow-offset-sm rounded-sm">
           <div className="flex flex-wrap gap-1 font-mono text-xs font-semibold">
-            
-            {/* Core Modules */}
-            <button
-              onClick={() => setActiveTab('classifier')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'classifier'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <Sparkle size={15} weight="bold" />
-              <span>AI Classifier</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ecourts')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'ecourts'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <Buildings size={15} weight="bold" />
-              <span>eCourts Portal</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('aadhaar')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'aadhaar'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <Cpu size={15} weight="bold" />
-              <span>Aadhaar Binding</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('auth')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'auth'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <User size={15} weight="bold" />
-              <span>Auth & Audit</span>
-            </button>
-
-            {/* Role Workspaces */}
-            <button
-              onClick={() => setActiveTab('judge-ws')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'judge-ws'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <Gavel size={15} weight="bold" />
-              <span>Judge Bench</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('lawyer-ws')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'lawyer-ws'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <FileText size={15} weight="bold" />
-              <span>Lawyer Filing</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('client-ws')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'client-ws'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <User size={15} weight="bold" />
-              <span>Citizen Vault</span>
-            </button>
-
-
-
+            {tabBtn('classifier', <Sparkle size={15} weight="bold" />, 'AI Classifier')}
+            {tabBtn('ecourts', <Buildings size={15} weight="bold" />, 'eCourts Portal')}
+            {tabBtn('aadhaar', <Cpu size={15} weight="bold" />, 'Aadhaar Binding')}
+            {tabBtn('auth', <User size={15} weight="bold" />, 'Auth & Audit')}
+            {tabBtn('judge-ws', <Gavel size={15} weight="bold" />, 'Judge Bench')}
+            {tabBtn('lawyer-ws', <FileText size={15} weight="bold" />, 'Lawyer Filing')}
+            {tabBtn('client-ws', <User size={15} weight="bold" />, 'Citizen Vault')}
           </div>
 
           <div className="hidden lg:flex items-center space-x-2 px-3 py-1 bg-paper-surface rounded-sm border border-paper-border text-[11px] font-mono text-paper-muted">
             <span className="w-2 h-2 rounded-full bg-paper-rust"></span>
-            <span>REST Client: localhost:8086</span>
+            <span>Gateway: {GATEWAY_HOST}</span>
           </div>
         </div>
 
-        {/* Active Tab Component */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -234,20 +160,21 @@ export function App() {
             {activeTab === 'auth' && (
               <AuthAndAuditModule
                 currentUser={currentUser}
+                walletAddress={walletAddress}
                 onLoginSuccess={(usr) => setCurrentUser(usr)}
-                onLogout={() => setCurrentUser(null)}
+                onLogout={() => {
+                  setCurrentUser(null);
+                  localStorage.removeItem('evault-token');
+                }}
               />
             )}
             {activeTab === 'judge-ws' && <JudgeDashboard />}
-            {activeTab === 'lawyer-ws' && <LawyerDashboard />}
+            {activeTab === 'lawyer-ws' && <LawyerDashboard currentUser={currentUser} />}
             {activeTab === 'client-ws' && <ClientDashboard walletAddress={walletAddress} />}
-
           </motion.div>
         </AnimatePresence>
-
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-paper-border bg-paper-card py-5 text-xs text-paper-muted font-mono">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
@@ -261,8 +188,8 @@ export function App() {
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
+
 export default App;

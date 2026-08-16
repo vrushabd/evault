@@ -38,7 +38,10 @@ export function ECourtsLookup() {
         setError(response.error || "Case record not found.");
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.message || "Case query error.");
+      const status = err.response?.status;
+      const msg = err.response?.data?.error || err.message || "Case query error.";
+      setCaseData(null);
+      setError(status === 404 ? msg : msg);
     } finally {
       setLoading(false);
     }

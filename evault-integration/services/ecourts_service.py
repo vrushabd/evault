@@ -156,32 +156,45 @@ def generate_mock_case(case_id: str) -> Dict[str, Any]:
 
 
 def get_case_by_id(case_id: str) -> Dict[str, Any]:
-    return generate_mock_case(case_id)
+    """Return a known mock case only. Unknown IDs raise KeyError (404)."""
+    key = (case_id or "").strip()
+    # Exact match first, then case-insensitive
+    if key in KNOWN_CASES:
+        return KNOWN_CASES[key]
+    for known_id, data in KNOWN_CASES.items():
+        if known_id.lower() == key.lower():
+            return data
+    raise KeyError(f"Case not found: {case_id}")
 
 
 def get_cases_by_judge(judge_id: str) -> List[Dict[str, Any]]:
-    rng = _seed_random_for_id(judge_id)
-    num_cases = rng.randint(3, 6)
+    """Return known cases for a judge; empty list if none match."""
+    query = (judge_id or "").strip().lower()
+    if not query:
+        return []
     cases = []
-    # Include matching known cases if any
-    for cid, cdata in KNOWN_CASES.items():
-        if judge_id.lower() in cdata["judge"].lower() or judge_id.upper() in cid:
+    for cdata in KNOWN_CASES.values():
+        if query in cdata["judge"].lower():
             cases.append(cdata)
-            
-    while len(cases) < num_cases:
-        mock_id = f"CASE-JDG-{rng.randint(100, 999)}-2024"
-        cases.append(generate_mock_case(mock_id))
     return cases
 
 
 def get_cases_by_lawyer(bar_number: str) -> List[Dict[str, Any]]:
-    rng = _seed_random_for_id(bar_number)
-    num_cases = rng.randint(2, 5)
-    cases = []
-    for i in range(num_cases):
-        mock_id = f"CASE-BAR-{bar_number[-4:] if len(bar_number) >= 4 else '1001'}-{i+1:03d}"
-        cases.append(generate_mock_case(mock_id))
-    return cases
+    """
+    Return known cases for a lawyer bar number.
+    Demo mapping: MAH-10492-2020 → Maharashtra criminal case.
+    """
+    query = (bar_number or "").strip().upper()
+    if not query:
+        return []
+    # Explicit demo bar → case mapping (SIH demo lawyer)
+    BAR_CASES = {
+        "MAH-10492-2020": ["CASE-MH-2024-001"],
+        "DL-8821-2019": ["CASE-DL-2024-001"],
+        "KA-3301-2021": ["CASE-KA-2024-001"],
+    }
+    case_ids = BAR_CASES.get(query, [])
+    return [KNOWN_CASES[cid] for cid in case_ids if cid in KNOWN_CASES]
 
 
 def get_all_courts() -> List[Dict[str, Any]]:
