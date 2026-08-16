@@ -1,18 +1,16 @@
 import axios from 'axios';
 
 // Service Base URLs
-const INTEGRATION_DIRECT_URL = 'http://localhost:8086';
-const AUTH_DIRECT_URL = 'http://localhost:8081';
-const DOC_DIRECT_URL = 'http://localhost:8082';
+const GATEWAY_URL = 'http://localhost:8080';
 
 const apiClient = axios.create({
-  baseURL: INTEGRATION_DIRECT_URL,
+  baseURL: GATEWAY_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });
 
 const authClient = axios.create({
-  baseURL: AUTH_DIRECT_URL,
+  baseURL: GATEWAY_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });
@@ -25,7 +23,7 @@ authClient.interceptors.request.use((config) => {
 });
 
 const docClient = axios.create({
-  baseURL: DOC_DIRECT_URL,
+  baseURL: GATEWAY_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });
