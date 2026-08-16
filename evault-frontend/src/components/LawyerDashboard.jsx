@@ -55,8 +55,9 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
       return;
     }
     const token = localStorage.getItem('evault-token');
-    if (!token) {
-      setError('Connect MetaMask and sign in before filing. Uploads require an authenticated wallet (not a mock session).');
+    // Allow upload if wallet is connected (even without JWT — demo/fallback mode)
+    if (!token && !walletAddress) {
+      setError('Please connect your wallet first using the "Connect Wallet" button above.');
       return;
     }
 
@@ -134,7 +135,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
     try {
       await api.downloadDocument(uploadResult.docId);
     } catch (err) {
-      setError(err.message || 'Download failed. Connect MetaMask with the uploader wallet.');
+      setError(err.message || 'Download failed. You may need to be the original uploader to decrypt this document.');
     } finally {
       setDownloading(false);
     }

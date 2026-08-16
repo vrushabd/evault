@@ -104,7 +104,7 @@ export function ClientDashboard({ walletAddress }) {
     } catch (err) {
       setDownloadError(
         err.message
-          || 'Download failed. Connect MetaMask with a wallet that uploaded or was granted access.'
+          || 'Download failed. You must be the original uploader or have been granted access to this document.'
       );
     } finally {
       clearInterval(timer);
