@@ -25,7 +25,7 @@
     --paper-surface: 24 24 27;
     --paper-card: 39 39 42;
     --paper-border: 63 63 70;
-    --paper-border-dark: 250 250 250;
+    --paper-border-dark: 82 82 91; /* Soften the glaring white to an elegant zinc-600 grey */
     --paper-ink: 250 250 250;
     --paper-muted: 161 161 170;
     --paper-light-muted: 113 113 122;
