@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --paper-bg: 252 251 248;
+    --paper-surface: 244 242 235;
+    --paper-card: 255 255 255;
+    --paper-border: 220 216 204;
+    --paper-border-dark: 24 24 27;
+    --paper-ink: 24 24 27;
+    --paper-muted: 100 101 107;
+    --paper-light-muted: 148 149 156;
+    --paper-rust: 194 65 12;
+    --paper-rust-hover: 154 52 18;
+    --paper-emerald: 21 128 61;
+  }
+
+  /* Specificity bump: ensure HTML with .dark class overrides :root */
+  html.dark {
+    --paper-bg: 9 9 11;
+    --paper-surface: 24 24 27;
+    --paper-card: 39 39 42;
+    --paper-border: 63 63 70;
+    --paper-border-dark: 250 250 250;
+    --paper-ink: 250 250 250;
+    --paper-muted: 161 161 170;
+    --paper-light-muted: 113 113 122;
+    --paper-rust: 234 88 12;
+    --paper-rust-hover: 194 65 12;
+    --paper-emerald: 34 197 94;
+  }
+
+  body {
+    background-color: rgb(var(--paper-bg));
+    color: rgb(var(--paper-ink));
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Custom Paper Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--paper-surface));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--paper-border));
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--paper-ink));
+}
+
+/* Custom Interactive Offset Button Classes */
+.btn-editorial {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  letter-spacing: -0.025em;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  border: 1px solid rgb(var(--paper-border-dark));
+  background-color: rgb(var(--paper-card));
+  color: rgb(var(--paper-ink));
+  box-shadow: 3px 3px 0px 0px rgb(var(--paper-border-dark));
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.125rem;
+}
+
+.btn-editorial:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px 0px rgb(var(--paper-border-dark));
+}
+
+.btn-editorial:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px rgb(var(--paper-border-dark));
+}
+
+.btn-editorial-rust {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  letter-spacing: -0.025em;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  border: 1px solid rgb(var(--paper-border-dark));
+  background-color: rgb(var(--paper-rust));
+  color: #ffffff; /* keep text white on rust button even in dark mode */
+  box-shadow: 3px 3px 0px 0px rgb(var(--paper-border-dark));
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.125rem;
+}
+
+.btn-editorial-rust:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px 0px rgb(var(--paper-border-dark));
+}
+
+.btn-editorial-rust:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px rgb(var(--paper-border-dark));
+}

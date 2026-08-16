@@ -1,0 +1,29 @@
+# Node.js
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Java / Maven
+target/
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: evault-gateway
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://127.0.0.1:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowedHeaders: "*"
+            allowCredentials: false
+            maxAge: 3600
+      routes:
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/auth/**
+        - id: document-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/documents/**
+        - id: blockchain-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/blockchain/**
+        - id: audit-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/audit/**
+        - id: notification-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/notify/**
+        - id: integration-ecourts
+          uri: http://localhost:8086
+          predicates:
+            - Path=/ecourts/**
+        - id: integration-classify
+          uri: http://localhost:8086
+          predicates:
+            - Path=/classify/**
+        - id: integration-aadhaar
+          uri: http://localhost:8086
+          predicates:
+            - Path=/aadhaar/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: WARN

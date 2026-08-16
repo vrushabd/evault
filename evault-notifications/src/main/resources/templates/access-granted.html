@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Access Granted</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+    <table style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <tr>
+            <td style="background-color: #1a3c5e; padding: 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0;">eVault Notification</h1>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 30px;">
+                <h2 style="color: #1a3c5e;">You now have access to a case</h2>
+                <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                    Dear <span th:text="${recipientName != null ? recipientName : 'User'}">User</span>,
+                </p>
+                <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                    You have been granted access to a case on the eVault platform.
+                </p>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #666; font-weight: bold;">Case ID:</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;" th:text="${caseId != null ? caseId : 'N/A'}">CASE-001</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #666; font-weight: bold;">Document:</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;" th:text="${documentName != null ? documentName : 'N/A'}">document.pdf</td>
+                    </tr>
+                </table>
+                <p th:if="${message != null}" style="color: #333; font-size: 16px; line-height: 1.5;" th:text="${message}"></p>
+                <p style="color: #999; font-size: 14px; margin-top: 30px;">
+                    This is an automated message from the eVault platform. Please do not reply.
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
