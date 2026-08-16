@@ -30,6 +30,8 @@ spring:
           uri: ${AUTH_SERVICE_URI:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
+          filters:
+            - AddRequestHeader=X-Internal-Api-Key, ${INTERNAL_API_KEY:changeme-internal-key}
         - id: document-service
           uri: ${DOCUMENT_SERVICE_URI:http://localhost:8082}
           predicates:
