@@ -36,12 +36,13 @@ async def test_upload_failure(mock_post):
 async def test_get_file_success(mock_get):
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.content = b"encrypted_data"
+    mock_response.content = b"\x00" * 40  # min ciphertext-looking payload
+    mock_response.headers = {"content-type": "application/octet-stream"}
     mock_get.return_value = mock_response
 
     service = PinataService()
     service.jwt = "test_jwt"
     content = await service.get_file("QmTestHash12345")
-    
-    assert content == b"encrypted_data"
-    mock_get.assert_called_once()
+
+    assert content == b"\x00" * 40
+    mock_get.assert_called()

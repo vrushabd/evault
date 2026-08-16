@@ -42,12 +42,28 @@ class EncryptionService:
         return key.strip()
 
     @staticmethod
-    def derive_version_key(doc_id: str, version_id: str) -> bytes:
+    def _candidate_master_keys() -> list[str]:
+        """Current master key first, then optional previous keys (decrypt rotation)."""
+        from app.config.settings import settings
+
+        keys: list[str] = []
+        primary = EncryptionService._master_key_hex()
+        if primary:
+            keys.append(primary)
+        previous = (settings.encryption_master_key_previous or os.getenv("ENCRYPTION_MASTER_KEY_PREVIOUS") or "").strip()
+        for part in previous.split(","):
+            k = part.strip().strip('"').strip("'")
+            if k and k not in keys:
+                keys.append(k)
+        return keys
+
+    @staticmethod
+    def derive_version_key(doc_id: str, version_id: str, master_key_hex: str | None = None) -> bytes:
         """
         Derive a unique 256-bit document key:
           ENCRYPTION_MASTER_KEY → HKDF-SHA256(info=doc/version context) → AES key
         """
-        master_key_hex = EncryptionService._master_key_hex()
+        master_key_hex = (master_key_hex or EncryptionService._master_key_hex()).strip()
         if not master_key_hex:
             raise EncryptionFailedError("ENCRYPTION_MASTER_KEY is not set in environment")
         if len(master_key_hex) != 64:
@@ -67,6 +83,27 @@ class EncryptionService:
             backend=default_backend(),
         )
         return hkdf.derive(master_key)
+
+    @staticmethod
+    def decrypt_with_key_fallbacks(encrypted_data: bytes, doc_id: str, version_id: str) -> bytes:
+        """
+        Decrypt using current master key, then previous rotated keys if configured.
+        New uploads always encrypt with the current master key only.
+        """
+        last_err: Exception | None = None
+        for master in EncryptionService._candidate_master_keys():
+            try:
+                key = EncryptionService.derive_version_key(doc_id, version_id, master)
+                try:
+                    return EncryptionService.decrypt_file(encrypted_data, key)
+                finally:
+                    del key
+            except Exception as e:
+                last_err = e
+                continue
+        if last_err:
+            raise last_err
+        raise DecryptionFailedError("No ENCRYPTION_MASTER_KEY available for decryption")
 
     @staticmethod
     def sha256_hex(data: bytes) -> str:

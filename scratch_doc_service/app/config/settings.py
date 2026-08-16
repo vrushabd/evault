@@ -24,6 +24,10 @@ class Settings(BaseSettings):
 
     # 32-byte hex key for AES-GCM
     encryption_master_key: str = ""
+    # Optional comma-separated older master keys (decrypt-only) after rotation
+    encryption_master_key_previous: str = ""
+    # Optional dedicated Pinata / IPFS gateway base (e.g. https://xxx.mypinata.cloud/ipfs)
+    pinata_gateway_url: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

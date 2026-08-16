@@ -187,19 +187,21 @@ class DocumentService:
             raise ValueError("IPFS_RETRIEVAL_FAILED")
 
         key_ref = doc.encryption_key_reference or ""
-        if key_ref.startswith("v2:"):
-            version_id = key_ref.split("v2:", 1)[1]
-            key = EncryptionService.derive_version_key(doc_id, version_id)
-        else:
-            # Legacy rows only — never store new plaintext AES keys
-            key = base64.b64decode(key_ref)
-
         try:
-            decrypted = EncryptionService.decrypt_file(encrypted_bytes, key)
+            if key_ref.startswith("v2:"):
+                version_id = key_ref.split("v2:", 1)[1]
+                decrypted = EncryptionService.decrypt_with_key_fallbacks(
+                    encrypted_bytes, doc_id, version_id
+                )
+            else:
+                # Legacy rows only — never store new plaintext AES keys
+                key = base64.b64decode(key_ref)
+                try:
+                    decrypted = EncryptionService.decrypt_file(encrypted_bytes, key)
+                finally:
+                    del key
         except Exception:
             raise ValueError("ENCRYPTION_FAILED")
-        finally:
-            del key
 
         await self.audit_client.log_event(
             "DOCUMENT_DOWNLOADED",

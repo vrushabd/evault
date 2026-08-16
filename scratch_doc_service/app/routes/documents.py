@@ -158,11 +158,20 @@ def handle_service_error(e: Exception):
             status_code=503,
             detail={"success": False, "error": "Document database unavailable"},
         )
-    elif "IPFS" in err_str or "Pinata" in err_str:
-        logger.error(f"IPFS error: {type(e).__name__}")
+    elif "IPFS_RETRIEVAL_FAILED" in err_str or "IPFS" in err_str or "Pinata" in err_str:
+        logger.error(f"IPFS error: {type(e).__name__}: {err_str[:200]}")
         raise HTTPException(
             status_code=502,
             detail={"success": False, "error": "IPFS/Pinata operation failed"},
+        )
+    elif "ENCRYPTION_FAILED" in err_str or "DecryptionFailed" in type(e).__name__:
+        logger.error(f"Decrypt error for document request: {err_str[:200]}")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "success": False,
+                "error": "Document decryption failed. The file may use an old encryption key — re-upload or set ENCRYPTION_MASTER_KEY_PREVIOUS.",
+            },
         )
     else:
         logger.error(f"Unhandled document service error: {type(e).__name__}: {err_str[:200]}")

@@ -16,6 +16,15 @@ PINATA_PIN_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS"
 PINATA_UNPIN_URL = "https://api.pinata.cloud/pinning/unpin/{cid}"
 PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/{cid}"
 
+# Public gateways as fallback when Pinata's CDN returns Cloudflare challenges
+FALLBACK_GATEWAYS = (
+    "https://dweb.link/ipfs/{cid}",
+    "https://ipfs.io/ipfs/{cid}",
+    "https://w3s.link/ipfs/{cid}",
+)
+
+MIN_CIPHERTEXT_LEN = 28  # nonce(12) + tag(16)
+
 
 class IPFSUploadFailedError(Exception):
     pass
@@ -25,11 +34,27 @@ class IPFSRetrievalFailedError(Exception):
     pass
 
 
+def _looks_like_ciphertext(content: bytes, content_type: str = "") -> bool:
+    """Reject HTML challenge pages / error bodies mistaken for encrypted blobs."""
+    if not content or len(content) < MIN_CIPHERTEXT_LEN:
+        return False
+    ct = (content_type or "").lower()
+    if "text/html" in ct or "text/plain" in ct:
+        return False
+    head = content[:64].lstrip().lower()
+    if head.startswith(b"<!doctype") or head.startswith(b"<html") or b"just a moment" in head:
+        return False
+    if b"the provided cid is invalid" in head or b"unable to retrieve" in head:
+        return False
+    return True
+
+
 class PinataService:
     def __init__(self):
         self.jwt = settings.pinata_jwt
         self.api_key = settings.pinata_api_key
         self.api_secret = settings.pinata_secret_api_key
+        self.gateway_url = (getattr(settings, "pinata_gateway_url", None) or "").strip()
 
         self.headers = {}
         if self.jwt and self.jwt != "mock":
@@ -80,8 +105,24 @@ class PinataService:
             except httpx.RequestError as e:
                 raise IPFSUploadFailedError(f"Network error during Pinata upload: {e}") from e
 
+    def _gateway_candidates(self, cid: str) -> list[str]:
+        urls: list[str] = []
+        if self.gateway_url:
+            base = self.gateway_url.rstrip("/")
+            urls.append(f"{base}/{cid}" if base.endswith("ipfs") else f"{base}/ipfs/{cid}")
+        urls.append(PINATA_GATEWAY.format(cid=cid))
+        urls.extend(g.format(cid=cid) for g in FALLBACK_GATEWAYS)
+        # dedupe preserve order
+        seen = set()
+        out = []
+        for u in urls:
+            if u not in seen:
+                seen.add(u)
+                out.append(u)
+        return out
+
     async def get_file(self, cid: str) -> bytes:
-        """Retrieve encrypted blob from IPFS (ciphertext only)."""
+        """Retrieve encrypted blob from IPFS (ciphertext only), with gateway fallbacks."""
         if self.jwt == "mock":
             try:
                 with open(os.path.join(self.mock_dir, cid), "rb") as f:
@@ -89,17 +130,45 @@ class PinataService:
             except Exception as e:
                 raise IPFSRetrievalFailedError("Mock encrypted blob not found locally") from e
 
-        gateway_url = PINATA_GATEWAY.format(cid=cid)
-        async with httpx.AsyncClient() as client:
+        # Fresh pins can take a few seconds to appear on public gateways
+        import asyncio
+
+        last_error: IPFSRetrievalFailedError | None = None
+        for attempt in range(3):
             try:
-                response = await client.get(gateway_url, timeout=60.0)
-                if response.status_code == 200:
-                    return response.content
-                raise IPFSRetrievalFailedError(
-                    f"Failed to retrieve encrypted blob from IPFS. Status {response.status_code}"
-                )
-            except httpx.RequestError as e:
-                raise IPFSRetrievalFailedError(f"Network error during IPFS retrieval: {e}") from e
+                return await self._get_file_once(cid)
+            except IPFSRetrievalFailedError as e:
+                last_error = e
+                if attempt < 2:
+                    await asyncio.sleep(2 * (attempt + 1))
+        assert last_error is not None
+        raise last_error
+
+    async def _get_file_once(self, cid: str) -> bytes:
+        errors: list[str] = []
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            for url in self._gateway_candidates(cid):
+                try:
+                    headers = {}
+                    # Authenticated Pinata gateway when JWT is available
+                    if "pinata.cloud" in url and self.jwt and self.jwt != "mock":
+                        headers["Authorization"] = f"Bearer {self.jwt}"
+                    response = await client.get(url, headers=headers, timeout=45.0)
+                    if response.status_code != 200:
+                        errors.append(f"{url} -> HTTP {response.status_code}")
+                        continue
+                    body = response.content
+                    if not _looks_like_ciphertext(body, response.headers.get("content-type", "")):
+                        errors.append(f"{url} -> non-ciphertext body ({len(body)} bytes)")
+                        continue
+                    return body
+                except httpx.RequestError as e:
+                    errors.append(f"{url} -> {type(e).__name__}")
+                    continue
+
+        raise IPFSRetrievalFailedError(
+            "Failed to retrieve encrypted blob from IPFS. " + "; ".join(errors[:4])
+        )
 
     async def unpin_file(self, cid: str) -> bool:
         url = PINATA_UNPIN_URL.format(cid=cid)
