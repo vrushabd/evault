@@ -167,17 +167,7 @@ export function App() {
               <span>Citizen Vault</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('topology')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all ${
-                activeTab === 'topology'
-                  ? 'bg-paper-rust text-white font-bold'
-                  : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-              }`}
-            >
-              <ShareNetwork size={15} weight="bold" />
-              <span>Topology</span>
-            </button>
+
 
           </div>
 
@@ -215,7 +205,7 @@ export function App() {
             {activeTab === 'judge-ws' && <JudgeDashboard />}
             {activeTab === 'lawyer-ws' && <LawyerDashboard />}
             {activeTab === 'client-ws' && <ClientDashboard walletAddress={walletAddress} />}
-            {activeTab === 'topology' && <VaultOverview />}
+
           </motion.div>
         </AnimatePresence>
 
