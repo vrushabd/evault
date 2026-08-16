@@ -13,6 +13,7 @@ from app.schemas.verification import VerificationResponse
 from app.schemas.version import DocumentVersionResponse
 from app.models.document import Document
 from app.models.case_participant import CaseParticipant
+from app.models.document_access import DocumentAccess
 import logging
 import os
 
@@ -62,13 +63,14 @@ async def check_case_participant(
 ):
     wallet = user.get("wallet_address")
     role = user.get("role", "").upper()
-    
+    wallet_l = (wallet or "").lower()
+
     if role in ["JUDGE", "ADMIN"]:
         return user
-        
+
     case_id = request.path_params.get("caseId")
     doc_id = request.path_params.get("docId")
-    
+
     # POST /share might pass docId in the body
     if not doc_id and request.method == "POST":
         try:
@@ -76,42 +78,63 @@ async def check_case_participant(
             doc_id = body.get("docId")
         except Exception:
             pass
-            
+
     if not case_id and doc_id:
         result = await db.execute(select(Document).where(Document.doc_id == doc_id))
         doc = result.scalars().first()
         if not doc:
             raise HTTPException(status_code=404, detail={"success": False, "error": "Not Found"})
         # Uploader always has access
-        if doc.uploaded_by and wallet and doc.uploaded_by.lower() == str(wallet).lower():
+        if doc.uploaded_by and wallet_l and doc.uploaded_by.lower() == wallet_l:
             return user
+        # Explicit share grant on this document
+        access_result = await db.execute(
+            select(DocumentAccess).where(
+                DocumentAccess.doc_id == doc_id,
+                DocumentAccess.status == "ACTIVE",
+            )
+        )
+        for access in access_result.scalars().all():
+            if (access.wallet_address or "").lower() == wallet_l:
+                return user
         case_id = doc.case_id
-        
+
     if not case_id:
         raise HTTPException(status_code=404, detail={"success": False, "error": "Not Found"})
 
     # Uploader of any doc on this case
     owner_result = await db.execute(
-        select(Document).where(
-            Document.case_id == case_id,
-            Document.uploaded_by == wallet,
-        ).limit(1)
+        select(Document).where(Document.case_id == case_id)
     )
-    if owner_result.scalars().first():
-        return user
-        
+    for owned in owner_result.scalars().all():
+        if (owned.uploaded_by or "").lower() == wallet_l:
+            return user
+
     result = await db.execute(
-        select(CaseParticipant).where(
-            CaseParticipant.case_id == case_id,
-            CaseParticipant.wallet_address == wallet
-        )
+        select(CaseParticipant).where(CaseParticipant.case_id == case_id)
     )
-    participant = result.scalars().first()
-    
-    if not participant:
-        raise HTTPException(status_code=404, detail={"success": False, "error": "Not Found"})
-        
-    return user
+    for participant in result.scalars().all():
+        if (participant.wallet_address or "").lower() == wallet_l:
+            return user
+
+    # Shared access to any document on this case
+    case_docs = await db.execute(select(Document.doc_id).where(Document.case_id == case_id))
+    doc_ids = [row[0] for row in case_docs.all()]
+    if doc_ids:
+        access_rows = await db.execute(
+            select(DocumentAccess).where(
+                DocumentAccess.doc_id.in_(doc_ids),
+                DocumentAccess.status == "ACTIVE",
+            )
+        )
+        for access in access_rows.scalars().all():
+            if (access.wallet_address or "").lower() == wallet_l:
+                return user
+
+    raise HTTPException(
+        status_code=403,
+        detail={"success": False, "error": "Access denied"},
+    )
 
 MAX_FILE_SIZE = settings.max_file_size_mb * 1024 * 1024
 
@@ -121,27 +144,32 @@ def handle_service_error(e: Exception):
         raise HTTPException(status_code=404, detail={"success": False, "error": "Document not found"})
     elif "ACCESS_EXPIRED" in err_str:
         raise HTTPException(status_code=403, detail={"success": False, "error": "Access permission has expired"})
-    elif "ACCESS_DENIED" in err_str or "UNAUTHORIZED" in err_str:
+    elif "ACCESS_DENIED" in err_str or "UNAUTHORIZED" in err_str or "DOCUMENT_NOT_FOUND_OR_UNAUTHORIZED" in err_str:
         raise HTTPException(status_code=403, detail={"success": False, "error": "Access denied"})
+    elif "INVALID_WALLET" in err_str:
+        raise HTTPException(status_code=400, detail={"success": False, "error": "Invalid wallet address"})
     elif "FILE_TOO_LARGE" in err_str:
         raise HTTPException(status_code=400, detail={"success": False, "error": "File is too large"})
     elif "INVALID_FILE" in err_str:
         raise HTTPException(status_code=400, detail={"success": False, "error": "Invalid file format"})
     elif "Access denied" in err_str or "OperationalError" in type(e).__name__:
-        logger.error(f"Database error: {err_str}")
+        logger.error(f"Database error: {type(e).__name__}")
         raise HTTPException(
             status_code=503,
-            detail={"success": False, "error": "Document database unavailable. Check DATABASE_URL / MySQL credentials."},
+            detail={"success": False, "error": "Document database unavailable"},
         )
     elif "IPFS" in err_str or "Pinata" in err_str:
-        logger.error(f"IPFS error: {err_str}")
+        logger.error(f"IPFS error: {type(e).__name__}")
         raise HTTPException(
             status_code=502,
-            detail={"success": False, "error": "IPFS/Pinata upload failed. Check PINATA credentials."},
+            detail={"success": False, "error": "IPFS/Pinata operation failed"},
         )
     else:
-        logger.error(f"Internal error: {err_str}", exc_info=True)
-        raise HTTPException(status_code=500, detail={"success": False, "error": "An internal error occurred"})
+        logger.error(f"Unhandled document service error: {type(e).__name__}: {err_str[:200]}")
+        raise HTTPException(
+            status_code=500,
+            detail={"success": False, "error": "Internal server error"},
+        )
 
 async def validate_pdf(file: UploadFile):
     max_bytes = settings.max_file_size_mb * 1024 * 1024
@@ -220,9 +248,14 @@ async def get_document(docId: str, user: dict = Depends(get_current_user), db: A
     try:
         pdf_bytes = await doc_service.retrieve_document_content(docId, uploader_wallet)
         return Response(
-            content=pdf_bytes, 
+            content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={docId}.pdf"}
+            headers={
+                "Content-Type": "application/pdf",
+                "Content-Disposition": f'attachment; filename="{docId}.pdf"',
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
     except Exception as e:
         handle_service_error(e)

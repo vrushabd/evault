@@ -9,8 +9,8 @@ router = APIRouter(prefix="/aadhaar", tags=["Aadhaar Identity Binding"])
 @router.post("/bind")
 async def bind_aadhaar_to_wallet(request: AadhaarBindRequest):
     """
-    Validates 12-digit Aadhaar number format, hashes using SHA-256, 
-    and stores hash + wallet address mapping in memory. Never returns raw Aadhaar.
+    Validates 12-digit Aadhaar, hashes with SHA-256, and persists the binding.
+    Never stores or returns plaintext Aadhaar.
     """
     try:
         bind_result = aadhaar_service.bind_aadhaar(

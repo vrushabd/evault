@@ -7,5 +7,8 @@ public enum AuditAction {
     VERIFY,
     REVOKE,
     AMEND,
-    SIGN
+    SIGN,
+    ACCESS_GRANTED,
+    DOCUMENT_DOWNLOADED,
+    ACCESS_DENIED
 }

@@ -13,11 +13,13 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/audit")
-@CrossOrigin(origins = "*") // Allow frontend integration
+@CrossOrigin(origins = "*")
 public class AuditLogController {
 
     @Autowired
@@ -49,6 +51,50 @@ public class AuditLogController {
         }
     }
 
+    @GetMapping("/recent")
+    public ResponseEntity<ApiResponse<List<AuditLog>>> getRecentLogs(
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 200));
+        List<AuditLog> logs = repository.findAllByOrderByPerformedAtDesc().stream()
+                .limit(safeLimit)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(logs));
+    }
+
+    @GetMapping("/id/{id}")
+    public ResponseEntity<ApiResponse<AuditLog>> getLogById(@PathVariable Long id) {
+        return repository.findById(id)
+                .map(log -> ResponseEntity.ok(ApiResponse.success(log)))
+                .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.error("Audit log not found: " + id)));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<AuditLog>> searchLog(@RequestParam("q") String query) {
+        String q = query == null ? "" : query.trim();
+        if (q.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Query is required"));
+        }
+
+        if (q.matches("\\d+")) {
+            return repository.findById(Long.parseLong(q))
+                    .map(log -> ResponseEntity.ok(ApiResponse.success(log)))
+                    .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.error("No audit log for id " + q)));
+        }
+
+        if (q.toLowerCase(Locale.ROOT).startsWith("0x") && q.length() >= 10) {
+            return repository.findByTxHashIgnoreCase(q)
+                    .map(log -> ResponseEntity.ok(ApiResponse.success(log)))
+                    .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.error("No audit log for tx hash")));
+        }
+
+        List<AuditLog> byDoc = repository.findByDocIdOrderByPerformedAtDesc(q);
+        if (!byDoc.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(byDoc.get(0)));
+        }
+
+        return ResponseEntity.status(404).body(ApiResponse.error("No matching audit record"));
+    }
+
     @GetMapping("/document/{docId}")
     public ResponseEntity<ApiResponse<List<AuditLog>>> getDocumentAuditLogs(@PathVariable String docId) {
         List<AuditLog> logs = repository.findByDocIdOrderByPerformedAtDesc(docId);
@@ -71,14 +117,14 @@ public class AuditLogController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> verifyDocumentTampering(@PathVariable String docId) {
         try {
             long dbCount = repository.countByDocId(docId);
-            
+
             String base = blockchainBaseUrl.endsWith("/")
                     ? blockchainBaseUrl.substring(0, blockchainBaseUrl.length() - 1)
                     : blockchainBaseUrl;
             String blockchainUrl = base + "/blockchain/audit/" + docId;
             @SuppressWarnings("unchecked")
             Map<String, Object> bcResponse = restTemplate.getForObject(blockchainUrl, Map.class);
-            
+
             long bcCount = 0;
             if (bcResponse != null && bcResponse.containsKey("count")) {
                 bcCount = Long.parseLong(bcResponse.get("count").toString());
@@ -88,13 +134,12 @@ public class AuditLogController {
             result.put("dbCount", dbCount);
             result.put("blockchainCount", bcCount);
             result.put("tampered", dbCount != bcCount);
-            
+
             return ResponseEntity.ok(ApiResponse.success(result));
         } catch (Exception e) {
-            // If blockchain service is down, handle gracefully
             Map<String, Object> result = new HashMap<>();
             result.put("error", "Failed to verify against blockchain: " + e.getMessage());
-            result.put("tampered", true); // Default to true if unable to verify for security
+            result.put("tampered", true);
             return ResponseEntity.ok(ApiResponse.success(result));
         }
     }

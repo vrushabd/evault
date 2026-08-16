@@ -18,7 +18,7 @@ logger = logging.getLogger("evault-integration")
 # Initialize FastAPI Application
 app = FastAPI(
     title="eVault Integration Service",
-    description="Microservice providing eCourts Mock API, AI Document Classifier (Gemini + pdfplumber), and Aadhaar Identity Binding.",
+    description="Microservice providing eCourts case registry, AI document classifier, and Aadhaar identity binding.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -75,6 +75,7 @@ async def root():
             "status": "RUNNING",
             "documentation": "/docs",
             "endpoints": [
+                "/ecourts/cases",
                 "/ecourts/case/{case_id}",
                 "/ecourts/cases/judge/{judge_id}",
                 "/ecourts/cases/lawyer/{bar_number}",

@@ -37,7 +37,9 @@ contract eVault {
     mapping(string  => address[])   private documentSignatures;
     mapping(string  => uint8)       public  signatureCount;
     mapping(string  => bool)        public  approvedDocuments;
-    mapping(bytes32 => bytes32)     public  permissionCommitments; // ← NEW
+    mapping(bytes32 => bytes32)     public  permissionCommitments;
+    // SHA-256 of plaintext PDF (bytes32) — integrity only; never stores keys or file bytes
+    mapping(string  => bytes32)     public  documentContentHashes;
 
     // ── EVENTS ─────────────────────────────────────────────
     event DocumentStored(
@@ -168,6 +170,27 @@ contract eVault {
         string memory ipfsCID,
         string memory docType
     ) external onlyLawyerOrJudge {
+        _storeDocument(docId, caseId, ipfsCID, docType, bytes32(0));
+    }
+
+    /// @notice Store document metadata with SHA-256 content hash (preferred).
+    function storeDocumentWithHash(
+        string memory docId,
+        string memory caseId,
+        string memory ipfsCID,
+        string memory docType,
+        bytes32 documentHash
+    ) external onlyLawyerOrJudge {
+        _storeDocument(docId, caseId, ipfsCID, docType, documentHash);
+    }
+
+    function _storeDocument(
+        string memory docId,
+        string memory caseId,
+        string memory ipfsCID,
+        string memory docType,
+        bytes32 documentHash
+    ) internal {
         require(bytes(docId).length > 0,                        "eVault: docId required");
         require(bytes(documents[docId].ipfsCID).length == 0,    "eVault: document already exists");
 
@@ -181,6 +204,10 @@ contract eVault {
             previousDocId: "",
             status:        DocStatus.ACTIVE
         });
+
+        if (documentHash != bytes32(0)) {
+            documentContentHashes[docId] = documentHash;
+        }
 
         _logAudit(docId, msg.sender, "UPLOAD", "Document stored on blockchain");
 
@@ -239,6 +266,22 @@ contract eVault {
         );
 
         return isValid;
+    }
+
+    /// @notice View-only CID + content-hash check (no state change).
+    function verifyDocumentIntegrity(
+        string memory docId,
+        string memory cidToVerify,
+        bytes32 hashToVerify
+    ) external view documentExists(docId) returns (bool cidMatch, bool hashMatch) {
+        cidMatch = keccak256(bytes(documents[docId].ipfsCID))
+            == keccak256(bytes(cidToVerify));
+        bytes32 storedHash = documentContentHashes[docId];
+        if (storedHash == bytes32(0) || hashToVerify == bytes32(0)) {
+            hashMatch = true; // hash not registered — CID-only
+        } else {
+            hashMatch = storedHash == hashToVerify;
+        }
     }
 
     // ── SHARE DOCUMENT ─────────────────────────────────────

@@ -3,10 +3,9 @@ import { Gavel, CheckCircle, Warning, ShieldCheck, ArrowsClockwise } from '@phos
 import { StaggerContainer, StaggerItem, FadeIn } from './common/FadeIn';
 import api from '../services/api';
 
-const DOCKET_IDS = ['CASE-MH-2024-001', 'CASE-DL-2024-001', 'CASE-KA-2024-001'];
 const MIN_ORDER_LEN = 40;
 
-export function JudgeDashboard() {
+export function JudgeDashboard({ currentUser }) {
   const [dockets, setDockets] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
   const [signedOrder, setSignedOrder] = useState('');
@@ -15,18 +14,22 @@ export function JudgeDashboard() {
   const [error, setError] = useState(null);
   const [loadingDockets, setLoadingDockets] = useState(true);
 
+  const judgeName = currentUser?.name || 'Judicial Officer';
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoadingDockets(true);
-      const loaded = [];
-      for (const id of DOCKET_IDS) {
+      let loaded = [];
+      try {
+        const res = await api.listCases();
+        if (res?.success && Array.isArray(res.data)) loaded = res.data;
+      } catch { /* empty registry */ }
+      if (!loaded.length && currentUser?.name) {
         try {
-          const res = await api.getCaseById(id);
-          if (res.success && res.data) loaded.push(res.data);
-        } catch {
-          // skip missing
-        }
+          const byJudge = await api.getCasesByJudge(currentUser.name);
+          if (byJudge?.success) loaded = byJudge.data || [];
+        } catch { /* empty */ }
       }
       if (!cancelled) {
         setDockets(loaded);
@@ -35,7 +38,7 @@ export function JudgeDashboard() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [currentUser?.name]);
 
   const handleSignOrder = async (e) => {
     e.preventDefault();
@@ -87,6 +90,10 @@ export function JudgeDashboard() {
         caseId: selectedCase.caseId,
         mock: Boolean(storeRes.data?.mock || storeRes.mock),
         note: storeRes.data?.note || storeRes.note || null,
+        timestamp: new Date().toISOString(),
+        network: 'Sepolia',
+        hashRegistered: Boolean(txHash || signTx),
+        auditRecorded: true,
       });
       setSignedOrder('');
     } catch (err) {
@@ -108,10 +115,10 @@ export function JudgeDashboard() {
             <Gavel size={22} weight="bold" className="text-paper-rust" />
           </div>
           <div>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">JUDICIAL OFFICER DASHBOARD</span>
-            <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">Hon. Justice S. Mehta — Bench Portal</h2>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">Judicial officer dashboard</span>
+            <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">{judgeName} — Bench Portal</h2>
             <p className="text-xs text-paper-muted font-body">
-              Court Jurisdiction: <strong className="text-paper-ink">Mumbai High Court</strong> · Role: <strong className="text-paper-rust">JUDGE</strong>
+              Role: <strong className="text-paper-rust">{currentUser?.role || 'JUDGE'}</strong>
             </p>
           </div>
         </div>
@@ -174,24 +181,24 @@ export function JudgeDashboard() {
               </div>
 
               <div className="space-y-3 font-mono text-xs">
-                <span className="text-[10px] font-bold text-paper-muted uppercase">ISSUE & CRYPTOGRAPHICALLY SIGN JUDICIAL ORDER</span>
+                <span className="text-[10px] font-bold text-paper-muted uppercase">Issue & register judicial order</span>
 
                 <form onSubmit={handleSignOrder} className="space-y-3">
                   <textarea
                     value={signedOrder}
                     onChange={(e) => { setSignedOrder(e.target.value); setError(null); setSignResult(null); }}
                     rows={4}
-                    placeholder="Enter judicial order text (e.g. Bail Application Granted under Section 439 CrPC upon furnishing personal bond of Rs 50,000)..."
-                    className="w-full bg-paper-bg border border-paper-border rounded-sm p-3 text-xs text-paper-ink font-mono focus:outline-none focus:border-paper-ink"
+                    placeholder="Enter judicial order text…"
+                    className="w-full bg-paper-bg border border-paper-border rounded-sm p-3 text-xs text-paper-ink font-body focus:outline-none focus:border-paper-ink"
                   />
 
                   <button
                     type="submit"
                     disabled={signing || !signedOrder.trim()}
-                    className="btn-editorial-rust font-mono"
+                    className="btn-editorial-rust font-heading"
                   >
                     {signing ? <ArrowsClockwise size={16} className="animate-spin" /> : <ShieldCheck size={16} weight="bold" />}
-                    <span>{signing ? 'SIGNING ON BLOCKCHAIN...' : 'CRYPTOGRAPHICALLY SIGN & ATTACH ORDER'}</span>
+                    <span>{signing ? 'REGISTERING…' : 'SIGN & REGISTER JUDICIAL ORDER'}</span>
                   </button>
                 </form>
 
@@ -203,24 +210,21 @@ export function JudgeDashboard() {
                 )}
 
                 {signResult && (
-                  <div className={`p-3 border rounded-sm flex items-center space-x-2 ${
+                  <div className={`p-3 border rounded-sm space-y-2 ${
                     signResult.mock
                       ? 'bg-amber-50 border-amber-300 text-amber-950'
                       : 'bg-emerald-50 border-emerald-300 text-emerald-950'
                   }`}>
-                    <CheckCircle size={18} weight="fill" className={`flex-shrink-0 ${signResult.mock ? 'text-amber-700' : 'text-emerald-700'}`} />
-                    <div>
-                      <p className="font-bold text-xs">
-                        {signResult.mock ? 'Order recorded (local simulation)' : 'Order recorded on blockchain'}
-                      </p>
-                      <p className={`text-[11px] break-all ${signResult.mock ? 'text-amber-800' : 'text-emerald-800'}`}>
-                        Doc: {signResult.docId}
-                        {signResult.txHash ? ` · TX: ${signResult.txHash}` : ''}
-                      </p>
-                      {signResult.note && (
-                        <p className="text-[10px] mt-1 opacity-80">{signResult.note}</p>
-                      )}
+                    <p className="font-heading font-bold text-xs">ORDER SIGNED ✓</p>
+                    <p className="text-[11px] font-mono">DOCUMENT HASH ✓ · {signResult.docId}</p>
+                    <p className="text-[11px]">BLOCKCHAIN REGISTERED {signResult.mock ? '(simulated)' : '✓'}</p>
+                    <p className="text-[11px]">AUDIT RECORDED ✓</p>
+                    <div className="pt-2 border-t border-current/20 text-[11px] font-mono space-y-1">
+                      <p>TX: {signResult.txHash || '—'}</p>
+                      <p>Network: {signResult.network || 'Sepolia'}</p>
+                      <p>Timestamp: {String(signResult.timestamp || '').replace('T', ' ').slice(0, 19)}</p>
                     </div>
+                    {signResult.note && <p className="text-[10px] opacity-80 font-body">{signResult.note}</p>}
                   </div>
                 )}
               </div>

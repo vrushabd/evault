@@ -4,6 +4,15 @@ Tamper-evident legal document vault (SIH260229 — Ministry of Law & Justice).
 
 Microservices: Auth · Documents (IPFS) · Blockchain (Sepolia) · Audit · Notifications · Integration (eCourts / AI / Aadhaar) · API Gateway · React frontend.
 
+## Hackathon deliverables
+
+| Outcome | Document |
+|---------|----------|
+| Design document | [docs/DESIGN_DOCUMENT.md](./docs/DESIGN_DOCUMENT.md) |
+| Business plan | [docs/BUSINESS_PLAN.md](./docs/BUSINESS_PLAN.md) |
+| Presentation notes | [docs/PRESENTATION.md](./docs/PRESENTATION.md) |
+| Pitch deck (PPTX) | [docs/presentation/eVault_Pitch.pptx](./docs/presentation/eVault_Pitch.pptx) |
+
 ## Quick start
 
 See [START_ALL.md](./START_ALL.md) for the full local run order.

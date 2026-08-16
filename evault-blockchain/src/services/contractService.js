@@ -7,6 +7,7 @@ const {
   STATUS_NAMES,
 } = require("../config/web3");
 const crypto = require("crypto");
+const { ethers } = require("ethers");
 
 // ── HELPERS ────────────────────────────────────────────────
 
@@ -19,8 +20,8 @@ function roleToNumber(role) {
 function isMockMode() {
   const flag = String(process.env.BLOCKCHAIN_MOCK || "").toLowerCase();
   if (flag === "true" || flag === "1" || flag === "yes") return true;
-  // Auto-mock when explicitly allowed and wallet is unfunded (SIH local demo)
-  const auto = String(process.env.BLOCKCHAIN_AUTO_MOCK || "true").toLowerCase();
+  // Opt-in only — production defaults to live chain writes
+  const auto = String(process.env.BLOCKCHAIN_AUTO_MOCK || "false").toLowerCase();
   return auto === "true" || auto === "1";
 }
 
@@ -99,23 +100,45 @@ function extractError(err) {
 
 // ── WRITE FUNCTIONS ────────────────────────────────────────
 
-async function storeDocument({ docId, caseId, ipfsCID, docType }) {
+async function storeDocument({ docId, caseId, ipfsCID, docType, documentHash }) {
   try {
     const gate = await ensureCanWrite();
     if (gate.mock) {
-      return mockTxResult({ docId, caseId, ipfsCID, docType, reason: gate.reason });
+      return mockTxResult({ docId, caseId, ipfsCID, docType, documentHash, reason: gate.reason });
     }
-    const tx      = await contract.storeDocument(docId, caseId, ipfsCID, docType);
+
+    let tx;
+    if (documentHash) {
+      const hashBytes32 = toBytes32Hash(documentHash);
+      try {
+        tx = await contract.storeDocumentWithHash(docId, caseId, ipfsCID, docType, hashBytes32);
+      } catch (err) {
+        // Older deployments without storeDocumentWithHash
+        console.warn("[blockchain] storeDocumentWithHash unavailable, using storeDocument:", err.shortMessage || err.message);
+        tx = await contract.storeDocument(docId, caseId, ipfsCID, docType);
+      }
+    } else {
+      tx = await contract.storeDocument(docId, caseId, ipfsCID, docType);
+    }
+
     const receipt = await tx.wait();
     return await formatTxResult(receipt);
   } catch (err) {
-    // Fall back to mock for SIH demos when live write fails and auto-mock is on
-    if (isMockMode() && String(process.env.BLOCKCHAIN_MOCK_ON_ERROR || "true").toLowerCase() !== "false") {
+    if (isMockMode() && String(process.env.BLOCKCHAIN_MOCK_ON_ERROR || "false").toLowerCase() === "true") {
       console.warn("[blockchain] storeDocument falling back to mock:", err.shortMessage || err.message);
       return mockTxResult({ docId, caseId, ipfsCID, docType, reason: err.shortMessage || err.message });
     }
     throw extractError(err);
   }
+}
+
+function toBytes32Hash(documentHash) {
+  if (!documentHash) return ethers.ZeroHash;
+  const hex = String(documentHash).replace(/^0x/i, "").toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(hex)) {
+    throw new Error("documentHash must be a 64-char SHA-256 hex digest");
+  }
+  return "0x" + hex;
 }
 
 async function amendDocument({ newDocId, previousDocId, newCID, docType }) {
@@ -219,21 +242,44 @@ async function commitPermission(docId, grantedTo, permissionHash) {
 
 // ── READ FUNCTIONS (free — no gas) ────────────────────────
 
-async function verifyDocument(docId, cidToVerify) {
+async function verifyDocument(docId, cidToVerify, hashToVerify) {
   try {
-    const doc     = await readContract.getDocument(docId);
-    const isValid = doc.ipfsCID === cidToVerify;
+    const doc = await readContract.getDocument(docId);
+    const cidMatch = doc.ipfsCID === cidToVerify;
 
-    // Fire and forget — records audit event on-chain
-    // without making caller wait 30 seconds
+    let hashMatch = true;
+    let storedHash = null;
+    try {
+      if (typeof readContract.documentContentHashes === "function") {
+        storedHash = await readContract.documentContentHashes(docId);
+        if (storedHash && storedHash !== "0x" + "0".repeat(64)) {
+          if (hashToVerify) {
+            const expected = toBytes32Hash(hashToVerify);
+            hashMatch = String(storedHash).toLowerCase() === String(expected).toLowerCase();
+          }
+        } else {
+          storedHash = null;
+        }
+      }
+    } catch (err) {
+      // Older contract without documentContentHashes — CID-only
+      console.warn("[blockchain] documentContentHashes unavailable:", err.shortMessage || err.message);
+    }
+
+    const isValid = cidMatch && hashMatch;
+
     contract.verifyDocument(docId, cidToVerify).catch((err) => {
       console.warn("[WARN] On-chain verify audit log failed:", err.shortMessage || err.message);
     });
 
     return {
       docId,
-      storedCID:   doc.ipfsCID,
+      storedCID: doc.ipfsCID,
       providedCID: cidToVerify,
+      storedHash,
+      providedHash: hashToVerify || null,
+      cidMatch,
+      hashMatch,
       isValid,
       status: isValid ? "UNTAMPERED" : "TAMPERED",
     };

@@ -291,6 +291,40 @@
     "type": "function"
   },
   {
+    "inputs": [
+      { "internalType": "string", "name": "docId", "type": "string" },
+      { "internalType": "string", "name": "caseId", "type": "string" },
+      { "internalType": "string", "name": "ipfsCID", "type": "string" },
+      { "internalType": "string", "name": "docType", "type": "string" },
+      { "internalType": "bytes32", "name": "documentHash", "type": "bytes32" }
+    ],
+    "name": "storeDocumentWithHash",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "name": "documentContentHashes",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "docId", "type": "string" },
+      { "internalType": "string", "name": "cidToVerify", "type": "string" },
+      { "internalType": "bytes32", "name": "hashToVerify", "type": "bytes32" }
+    ],
+    "name": "verifyDocumentIntegrity",
+    "outputs": [
+      { "internalType": "bool", "name": "cidMatch", "type": "bool" },
+      { "internalType": "bool", "name": "hashMatch", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "name": "userRoles",
     "outputs": [{ "internalType": "enum eVault.Role", "name": "", "type": "uint8" }],

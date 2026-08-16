@@ -24,6 +24,39 @@ class DocumentRepository:
         result = await self.session.execute(select(Document).where(Document.case_id == case_id))
         return list(result.scalars().all())
 
+    async def get_accessible_by_wallet(self, wallet_address: str) -> List[Document]:
+        """Documents uploaded by, shared with, or on a case the wallet participates in."""
+        from app.models.document_access import DocumentAccess
+        from app.models.case_participant import CaseParticipant
+        from sqlalchemy import or_, func
+
+        wallet = (wallet_address or "").strip()
+        if not wallet:
+            return []
+        lowered = wallet.lower()
+
+        result = await self.session.execute(
+            select(Document)
+            .where(
+                or_(
+                    func.lower(Document.uploaded_by) == lowered,
+                    Document.doc_id.in_(
+                        select(DocumentAccess.doc_id).where(
+                            func.lower(DocumentAccess.wallet_address) == lowered,
+                            DocumentAccess.status == "ACTIVE",
+                        )
+                    ),
+                    Document.case_id.in_(
+                        select(CaseParticipant.case_id).where(
+                            func.lower(CaseParticipant.wallet_address) == lowered
+                        )
+                    ),
+                )
+            )
+            .order_by(Document.created_at.desc())
+        )
+        return list(result.scalars().all())
+
     async def update_status(self, doc_id: str, status: str, tx_hash: Optional[str] = None) -> Optional[Document]:
         doc = await self.get_by_doc_id(doc_id)
         if doc:

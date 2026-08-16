@@ -11,8 +11,10 @@ async def test_upload_valid_pdf(mock_process):
     mock_doc.case_id = "CASE-123"
     mock_doc.doc_type = "AFFIDAVIT"
     mock_doc.ipfs_cid = "bafytest"
+    mock_doc.document_hash = "a" * 64
     mock_doc.version = 1
-    mock_doc.status = "UPLOADED_IPFS"
+    mock_doc.key_version = 3
+    mock_doc.status = "PENDING_CHAIN"
     mock_doc.uploaded_by = "0xMockUserWalletAddress"
     mock_doc.tx_hash = None
     mock_doc.created_at = "2026-08-14T12:00:00Z"
@@ -71,4 +73,4 @@ async def test_upload_file_too_large():
         
     assert response.status_code == 400
     error = response.json()["detail"]["error"]
-    assert error == "File too large. Max 10MB"
+    assert error == "File too large. Max 20MB"

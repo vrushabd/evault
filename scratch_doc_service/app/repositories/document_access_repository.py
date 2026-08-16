@@ -15,10 +15,12 @@ class DocumentAccessRepository:
         return access
 
     async def get_access_by_doc_and_wallet(self, doc_id: str, wallet_address: str) -> Optional[DocumentAccess]:
+        from sqlalchemy import func
+        wallet = (wallet_address or "").lower()
         result = await self.session.execute(
             select(DocumentAccess).where(
                 DocumentAccess.doc_id == doc_id,
-                DocumentAccess.wallet_address == wallet_address,
+                func.lower(DocumentAccess.wallet_address) == wallet,
                 DocumentAccess.status == "ACTIVE"
             )
         )

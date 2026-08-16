@@ -153,6 +153,11 @@ export const api = {
     return res.data;
   },
 
+  listCases: async () => {
+    const res = await apiClient.get('/ecourts/cases');
+    return res.data;
+  },
+
   getECourtsHealth: async () => {
     const res = await apiClient.get('/ecourts/health');
     return res.data;
@@ -221,6 +226,91 @@ export const api = {
   verifyDocument: async (docId) => {
     const res = await docClient.get(`/api/documents/verify/${encodeURIComponent(docId)}`);
     return res.data;
+  },
+
+  getAuditByDocument: async (docId) => {
+    const res = await apiClient.get(`/audit/document/${encodeURIComponent(docId)}`);
+    return res.data;
+  },
+
+  getAuditRecent: async (limit = 50) => {
+    const res = await apiClient.get('/audit/recent', { params: { limit } });
+    return res.data;
+  },
+
+  getSystemHealth: async () => {
+    const checks = {};
+    try {
+      const gw = await apiClient.get('/actuator/health', { timeout: 4000 });
+      checks.gateway = gw.status === 200;
+    } catch {
+      checks.gateway = false;
+    }
+    try {
+      const bc = await apiClient.get('/blockchain/health', { timeout: 4000 });
+      checks.blockchain = bc.status === 200 || bc.data?.success !== false;
+    } catch {
+      checks.blockchain = false;
+    }
+    try {
+      const audit = await apiClient.get('/audit/health', { timeout: 4000 });
+      checks.audit = audit.status === 200;
+    } catch {
+      checks.audit = false;
+    }
+    return checks;
+  },
+
+  /** Fetch decrypted PDF and trigger a browser download. Requires JWT (MetaMask login). */
+  downloadDocument: async (docId) => {
+    const id = String(docId || '').trim();
+    if (!id) throw new Error('Document ID is required');
+
+    try {
+      const res = await docClient.get(`/api/documents/${encodeURIComponent(id)}`, {
+        responseType: 'blob',
+        timeout: 120000,
+      });
+
+      const contentType = res.headers['content-type'] || '';
+      if (contentType.includes('application/json')) {
+        const text = await res.data.text();
+        let message = 'Download failed';
+        try {
+          const parsed = JSON.parse(text);
+          message = parsed?.detail?.error || parsed?.error || parsed?.message || message;
+        } catch {
+          message = text || message;
+        }
+        throw new Error(message);
+      }
+
+      const blob = res.data instanceof Blob
+        ? res.data
+        : new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return { success: true, docId: id };
+    } catch (err) {
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          throw new Error(
+            parsed?.detail?.error || parsed?.error || parsed?.message || err.message
+          );
+        } catch (inner) {
+          if (inner.message && inner.message !== err.message) throw inner;
+        }
+      }
+      throw err;
+    }
   },
 
   // =========================================================

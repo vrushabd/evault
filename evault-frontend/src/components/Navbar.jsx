@@ -1,33 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Scales, Wallet, Cpu, Moon, Sun } from '@phosphor-icons/react';
+import { Scales, Wallet, Fingerprint, Moon, Sun, LockKey } from '@phosphor-icons/react';
 import { useTheme } from '../context/ThemeContext';
+import api from '../services/api';
 
 export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarStatus }) {
   const { theme, toggleTheme } = useTheme();
-  const [gatewayUp, setGatewayUp] = useState(null);
+  const [health, setHealth] = useState({ gateway: null, blockchain: null, audit: null });
 
   useEffect(() => {
     let cancelled = false;
     const ping = async () => {
       try {
-        // Same-origin Vite proxy → gateway (avoids browser CORS on :8080)
-        const res = await fetch('/actuator/health', { signal: AbortSignal.timeout(4000) });
-        if (!cancelled) setGatewayUp(res.ok);
+        const checks = await api.getSystemHealth();
+        if (!cancelled) setHealth(checks);
       } catch {
-        if (!cancelled) setGatewayUp(false);
+        if (!cancelled) setHealth({ gateway: false, blockchain: false, audit: false });
       }
     };
     ping();
-    const id = setInterval(ping, 15000);
+    const id = setInterval(ping, 20000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const statusDot =
-    gatewayUp === null
-      ? 'bg-paper-muted'
-      : gatewayUp
-        ? 'bg-emerald-500'
-        : 'bg-red-500';
+  const Dot = ({ ok }) => (
+    <span
+      className={`w-1.5 h-1.5 rounded-full ${
+        ok === null ? 'bg-paper-muted' : ok ? 'bg-emerald-500' : 'bg-red-500'
+      }`}
+    />
+  );
 
   return (
     <header className="sticky top-0 z-50 bg-paper-bg/95 border-b border-paper-border backdrop-blur-sm">
@@ -37,52 +38,58 @@ export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarSta
             <Scales size={20} weight="bold" className="text-paper-rust" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-heading text-lg font-bold text-paper-ink tracking-tight">eVault</span>
-            </div>
+            <span className="font-heading text-lg font-bold text-paper-ink tracking-tight">eVault</span>
             <p className="text-[11px] text-paper-muted font-body hidden sm:block">
-              Blockchain Legal Records
+              Secure Legal Document Vault
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <button
+            type="button"
             onClick={toggleTheme}
-            className="w-8 h-8 flex items-center justify-center rounded-sm border border-paper-border-dark bg-paper-card text-paper-ink shadow-offset-sm hover:-translate-y-px hover:-translate-x-px hover:shadow-offset active:translate-y-px active:translate-x-px active:shadow-none transition-all"
-            aria-label="Toggle Dark Mode"
+            className="w-8 h-8 flex items-center justify-center rounded-sm border border-paper-border-dark bg-paper-card text-paper-ink shadow-offset-sm hover:-translate-y-px transition-all"
+            aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
           </button>
 
-          <div className="hidden md:flex items-center space-x-2 bg-paper-surface border border-paper-border px-3 py-1.5 rounded-sm text-xs font-mono">
-            <span className={`w-2 h-2 rounded-full ${statusDot}`}></span>
-            <span className="text-paper-muted">API:</span>
-            <span className="text-paper-ink font-semibold">
-              {gatewayUp === null ? '…' : gatewayUp ? 'Online' : 'Offline'}
+          <div className="hidden lg:flex items-center gap-3 bg-paper-surface border border-paper-border px-3 py-1.5 rounded-sm text-[10px] font-heading tracking-wide uppercase">
+            <span className="flex items-center gap-1.5 text-paper-ink">
+              <Dot ok={health.gateway} /> System {health.gateway ? 'online' : health.gateway === false ? 'offline' : '…'}
+            </span>
+            <span className="flex items-center gap-1.5 text-paper-ink">
+              <Dot ok={health.blockchain} /> Sepolia {health.blockchain ? 'connected' : health.blockchain === false ? 'offline' : '…'}
+            </span>
+            <span className="flex items-center gap-1.5 text-paper-ink">
+              <Dot ok={true} />
+              <LockKey size={11} weight="bold" className="text-emerald-600" />
+              Encryption active
             </span>
           </div>
 
           {isConnected && (
-            <div className={`hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-sm border text-xs font-mono ${
+            <div className={`hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-sm border text-[10px] font-heading uppercase tracking-wide ${
               aadhaarStatus?.isBound
                 ? 'bg-paper-emerald/10 border-paper-emerald/30 text-paper-emerald'
                 : 'bg-paper-rust/10 border-paper-rust/30 text-paper-rust'
             }`}>
-              <Cpu size={14} weight="bold" />
-              <span>Aadhaar: {aadhaarStatus?.isBound ? 'BOUND' : 'UNBOUND'}</span>
+              <Fingerprint size={14} weight="bold" />
+              <span>{aadhaarStatus?.isBound ? 'Identity bound' : 'Identity unbound'}</span>
             </div>
           )}
 
           <button
+            type="button"
             onClick={onConnectWallet}
-            className={isConnected ? 'btn-editorial font-mono' : 'btn-editorial-rust font-mono'}
+            className={isConnected ? 'btn-editorial font-heading' : 'btn-editorial-rust font-heading'}
           >
             <Wallet size={16} weight="bold" />
-            <span>
+            <span className={isConnected ? 'font-mono text-[11px]' : ''}>
               {isConnected
-                ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`
-                : 'CONNECT WALLET'}
+                ? `${walletAddress.substring(0, 6)}…${walletAddress.substring(walletAddress.length - 4)}`
+                : 'Connect wallet'}
             </span>
           </button>
         </div>
@@ -90,4 +97,5 @@ export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarSta
     </header>
   );
 }
+
 export default Navbar;

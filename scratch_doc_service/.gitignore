@@ -25,6 +25,9 @@ venv/
 # Environment
 .env
 
+# Local ciphertext mock store (PINATA_JWT=mock)
+mock_ipfs/
+
 # Database
 *.db
 *.sqlite3

@@ -8,9 +8,9 @@ const SAMPLE_TEXTS = {
   Judgment: "IN THE SUPREME COURT OF INDIA. Civil Appellate Jurisdiction. Civil Appeal No. 4410 of 2024. M/S TechCorp India vs Union of India. Dated: 2024-03-20. JUDGMENT: Hon. Justice R.K. Sharma. The impugned order of the High Court is hereby set aside. Parties to bear their own costs."
 };
 
-export function ClassifierModule() {
+export function ClassifierModule({ onSecureDocument }) {
   const [activeInputMode, setActiveInputMode] = useState('text');
-  const [inputText, setInputText] = useState(SAMPLE_TEXTS.FIR);
+  const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -70,8 +70,9 @@ export function ClassifierModule() {
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-paper-border pb-4">
             <div>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">01 / DOCUMENT ANALYSIS WORKBENCH</span>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">Document analysis</span>
               <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">AI Document Classifier</h2>
+              <p className="text-xs text-paper-muted font-body mt-1">Review AI suggestions before securing a document in the vault.</p>
             </div>
 
             {/* Mode Switcher */}
@@ -101,21 +102,24 @@ export function ClassifierModule() {
 
           {activeInputMode === 'text' ? (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-                <span className="text-paper-muted text-[11px] font-semibold uppercase">PRESETS:</span>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-paper-muted text-[11px] font-semibold uppercase">Try sample:</span>
                 <button
+                  type="button"
                   onClick={() => setInputText(SAMPLE_TEXTS.FIR)}
                   className="bg-paper-surface hover:bg-paper-border text-paper-ink border border-paper-border px-2.5 py-1 transition rounded-sm"
                 >
-                  FIR Sample
+                  FIR
                 </button>
                 <button
+                  type="button"
                   onClick={() => setInputText(SAMPLE_TEXTS.BailOrder)}
                   className="bg-paper-surface hover:bg-paper-border text-paper-ink border border-paper-border px-2.5 py-1 transition rounded-sm"
                 >
                   Bail Order
                 </button>
                 <button
+                  type="button"
                   onClick={() => setInputText(SAMPLE_TEXTS.Judgment)}
                   className="bg-paper-surface hover:bg-paper-border text-paper-ink border border-paper-border px-2.5 py-1 transition rounded-sm"
                 >
@@ -127,17 +131,17 @@ export function ClassifierModule() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 rows={7}
-                placeholder="Paste legal text..."
-                className="w-full bg-paper-bg border border-paper-border p-3.5 text-xs text-paper-ink font-mono focus:outline-none focus:border-paper-ink transition rounded-sm"
+                placeholder="Paste legal text…"
+                className="w-full bg-paper-bg border border-paper-border p-3.5 text-xs text-paper-ink font-body focus:outline-none focus:border-paper-ink transition rounded-sm"
               />
 
               <button
                 onClick={handleClassifyText}
                 disabled={loading}
-                className="btn-editorial-rust font-mono"
+                className="btn-editorial-rust font-heading"
               >
                 {loading ? <ArrowsClockwise size={16} className="animate-spin" /> : <Sparkle size={16} weight="bold" />}
-                <span>{loading ? 'CLASSIFYING...' : 'RUN CLASSIFIER'}</span>
+                <span>{loading ? 'CLASSIFYING…' : 'RUN CLASSIFIER'}</span>
               </button>
             </div>
           ) : (
@@ -215,13 +219,16 @@ export function ClassifierModule() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-paper-border pb-4">
             <div className="flex items-center space-x-2">
               <CheckCircle size={22} weight="fill" className="text-paper-rust" />
-              <h3 className="font-heading text-lg font-bold text-paper-ink tracking-tight">Extracted Metadata Digest</h3>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-paper-ink tracking-tight">Review classification</h3>
+                <p className="text-[11px] text-paper-muted font-body">AI output is a suggestion — confirm before filing.</p>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-2 font-mono text-xs bg-paper-surface border border-paper-border px-3 py-1 rounded-sm">
-              <span className="text-paper-muted">Confidence Score:</span>
+            <div className="flex items-center space-x-2 text-xs bg-paper-surface border border-paper-border px-3 py-1 rounded-sm font-mono">
+              <span className="text-paper-muted">Confidence:</span>
               <span className="font-bold text-paper-rust">
-                {(result.confidence * 100).toFixed(0)}%
+                {result.confidence != null ? `${(result.confidence * 100).toFixed(0)}%` : '—'}
               </span>
             </div>
           </div>
@@ -276,11 +283,28 @@ export function ClassifierModule() {
 
           {result.rawText && (
             <div className="bg-paper-surface border border-paper-border p-4 rounded-sm">
-              <span className="text-[10px] font-mono font-bold text-paper-muted uppercase">RAW OCR TEXT PREVIEW</span>
-              <p className="text-xs font-mono text-paper-ink mt-2 leading-relaxed bg-paper-card p-3 rounded-sm border border-paper-border">
+              <span className="text-[10px] font-mono font-bold text-paper-muted uppercase">Extracted text preview</span>
+              <p className="text-xs font-body text-paper-ink mt-2 leading-relaxed bg-paper-card p-3 rounded-sm border border-paper-border">
                 {result.rawText}
               </p>
             </div>
+          )}
+
+          {onSecureDocument && (
+            <button
+              type="button"
+              onClick={() => onSecureDocument({
+                documentType: result.documentType,
+                caseNumber: result.caseNumber,
+                court: result.court,
+                parties: result.parties,
+                file: selectedFile,
+              })}
+              className="btn-editorial-rust font-heading"
+            >
+              <FileText size={16} weight="bold" />
+              <span>SECURE THIS DOCUMENT</span>
+            </button>
           )}
 
         </div>

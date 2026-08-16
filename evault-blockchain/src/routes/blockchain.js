@@ -77,14 +77,14 @@ router.post("/amend", async (req, res) => {
 router.get("/verify/:docId", async (req, res) => {
   try {
     const { docId } = req.params;
-    const { cid }   = req.query;
+    const { cid, hash } = req.query;
     if (!isValidId(docId)) {
       return res.status(400).json({ success: false, error: "Invalid docId" });
     }
     if (!cid) {
       return res.status(400).json({ success: false, error: "cid query parameter is required" });
     }
-    const data = await contractService.verifyDocument(docId, cid);
+    const data = await contractService.verifyDocument(docId, cid, hash || null);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

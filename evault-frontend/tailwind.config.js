@@ -23,9 +23,9 @@ export default {
         }
       },
       fontFamily: {
-        heading: ['Space Grotesk', 'sans-serif'],
+        heading: ['Manrope', 'DM Sans', 'sans-serif'],
         body: ['DM Sans', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace']
+        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
       },
       spacing: {
         '3': '12px',

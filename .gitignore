@@ -26,6 +26,10 @@ target/
 !.env.example
 !**/.env.example
 
+# Local stores
+**/mock_ipfs/
+evault-integration/data/
+
 # Logs
 *.log
 logs/
