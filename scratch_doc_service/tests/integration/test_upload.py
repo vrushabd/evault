@@ -28,7 +28,9 @@ async def test_full_upload_pipeline(mock_repo_create, mock_pinata_upload):
     mock_doc.case_id = "CASE-123"
     mock_doc.doc_type = "AFFIDAVIT"
     mock_doc.ipfs_cid = "QmFakePinataCIDForIntegrationTest"
+    mock_doc.document_hash = "0x1234567890abcdef"
     mock_doc.version = 1
+    mock_doc.key_version = 1
     mock_doc.uploaded_by = "0xMockUserWalletAddress"
     mock_doc.status = "UPLOADED_IPFS"
     mock_doc.tx_hash = None

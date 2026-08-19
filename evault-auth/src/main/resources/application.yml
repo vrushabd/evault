@@ -20,7 +20,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:changeme-use-a-long-random-secret-in-production-at-least-256-bits}
-  expiration: ${JWT_EXPIRATION:3600000}  # 1 hour in milliseconds
+  expiration: ${JWT_EXPIRATION:3600000}
 
 app:
   internal-api-key: ${INTERNAL_API_KEY:changeme-internal-key}

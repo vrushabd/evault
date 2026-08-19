@@ -7,9 +7,20 @@ class AadhaarBindRequest(BaseModel):
     walletAddress: str = Field(..., description="Ethereum wallet address (0x...)")
 
 
+class AadhaarSendOtpRequest(BaseModel):
+    aadhaarNumber: str = Field(..., description="12-digit Aadhaar number")
+    walletAddress: str = Field(..., description="Ethereum wallet address (0x...)")
+
+
+class AadhaarVerifyOtpRequest(BaseModel):
+    txnId: str = Field(..., description="Transaction ID returned from send-otp")
+    otp: str = Field(..., description="6-digit numeric OTP")
+    walletAddress: str = Field(..., description="Ethereum wallet address (0x...)")
+
+
 class AadhaarBindResponse(BaseModel):
     success: bool = Field(True, description="Operation success status")
-    aadhaarHash: str = Field(..., description="SHA-256 hash of Aadhaar number")
+    aadhaarHash: str = Field(..., description="SHA-256 / HMAC hash of Aadhaar number")
     walletAddress: str = Field(..., description="Bound wallet address")
     boundAt: str = Field(..., description="Timestamp of binding (ISO format)")
 

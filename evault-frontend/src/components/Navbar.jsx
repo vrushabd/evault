@@ -3,7 +3,7 @@ import { Scales, Wallet, Fingerprint, Moon, Sun, LockKey } from '@phosphor-icons
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 
-export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarStatus }) {
+export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarStatus, onOpenIdentity }) {
   const { theme, toggleTheme } = useTheme();
   const [health, setHealth] = useState({ gateway: null, blockchain: null, audit: null });
 
@@ -70,14 +70,19 @@ export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarSta
           </div>
 
           {isConnected && (
-            <div className={`hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-sm border text-[10px] font-heading uppercase tracking-wide ${
-              aadhaarStatus?.isBound
-                ? 'bg-paper-emerald/10 border-paper-emerald/30 text-paper-emerald'
-                : 'bg-paper-rust/10 border-paper-rust/30 text-paper-rust'
-            }`}>
+            <button
+              type="button"
+              onClick={onOpenIdentity}
+              title={aadhaarStatus?.isBound ? 'Identity bound — Click to view identity status' : 'Identity unbound — Click to bind Aadhaar identity'}
+              className={`hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-sm border text-[10px] font-heading uppercase tracking-wide cursor-pointer transition-all hover:-translate-y-px shadow-offset-sm ${
+                aadhaarStatus?.isBound
+                  ? 'bg-paper-emerald/10 border-paper-emerald/30 text-paper-emerald hover:bg-paper-emerald/20'
+                  : 'bg-paper-rust/10 border-paper-rust/30 text-paper-rust hover:bg-paper-rust/20'
+              }`}
+            >
               <Fingerprint size={14} weight="bold" />
               <span>{aadhaarStatus?.isBound ? 'Identity bound' : 'Identity unbound'}</span>
-            </div>
+            </button>
           )}
 
           <button

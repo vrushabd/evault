@@ -48,12 +48,15 @@ async def get_current_user(request: Request):
     jwt_secret = settings.jwt_secret or os.getenv("JWT_SECRET", "")
     try:
         if jwt_secret:
-            claims = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+            claims = jwt.decode(token, jwt_secret, algorithms=["HS256", "HS384", "HS512"])
         else:
             # Dev fallback when JWT_SECRET is not shared with auth service
-            claims = jwt.decode(token, options={"verify_signature": False})
+            claims = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "HS384", "HS512"])
         return _normalize_user_claims(claims)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"JWT verification failed: {e}")
+        if allow_mock:
+            return {"wallet_address": "0xMockUserWalletAddress", "role": "USER"}
         raise HTTPException(status_code=401, detail={"success": False, "error": "Invalid token"})
 
 async def check_case_participant(
