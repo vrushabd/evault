@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: evault-mysql
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: ""
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  evault-auth:
+    build:
+      context: ./evault-auth
+    container_name: evault-auth
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/evault_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+    ports:
+      - "8081:8081"
+
+  scratch-doc-service:
+    build:
+      context: ./scratch_doc_service
+    container_name: evault-documents
+    env_file:
+      - .env
+    ports:
+      - "8082:8082"
+
+  evault-blockchain:
+    build:
+      context: ./evault-blockchain
+    container_name: evault-blockchain
+    env_file:
+      - .env
+    ports:
+      - "8083:8083"
+
+  evault-audit:
+    build:
+      context: ./evault-audit
+    container_name: evault-audit
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/evault_audit?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+    ports:
+      - "8084:8084"
+
+  evault-notifications:
+    build:
+      context: ./evault-notifications
+    container_name: evault-notifications
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/evault_notifications?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+    ports:
+      - "8085:8085"
+
+  evault-integration:
+    build:
+      context: ./evault-integration
+    container_name: evault-integration
+    env_file:
+      - .env
+    ports:
+      - "8086:8086"
+
+  evault-gateway:
+    build:
+      context: ./evault-gateway
+    container_name: evault-gateway
+    depends_on:
+      - evault-auth
+      - scratch-doc-service
+      - evault-blockchain
+      - evault-audit
+      - evault-notifications
+      - evault-integration
+    env_file:
+      - .env
+    environment:
+      - AUTH_SERVICE_URI=http://evault-auth:8081
+      - DOCUMENT_SERVICE_URI=http://scratch-doc-service:8082
+      - BLOCKCHAIN_SERVICE_URI=http://evault-blockchain:8083
+      - AUDIT_SERVICE_URI=http://evault-audit:8084
+      - NOTIFICATION_SERVICE_URI=http://evault-notifications:8085
+      - INTEGRATION_SERVICE_URI=http://evault-integration:8086
+    ports:
+      - "8080:8080"
+
+  evault-frontend:
+    build:
+      context: ./evault-frontend
+    container_name: evault-frontend
+    depends_on:
+      - evault-gateway
+    environment:
+      - VITE_GATEWAY_URL=http://localhost:8080
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
