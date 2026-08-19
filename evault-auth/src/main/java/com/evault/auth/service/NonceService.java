@@ -27,11 +27,17 @@ public class NonceService {
 
     @Transactional
     public String generateNonce(String walletAddress) {
-        authNonceRepository.deleteByWalletAddress(walletAddress);
         String nonce = UUID.randomUUID().toString();
         
-        AuthNonce authNonce = new AuthNonce();
-        authNonce.setWalletAddress(walletAddress);
+        Optional<AuthNonce> existing = authNonceRepository.findByWalletAddress(walletAddress);
+        AuthNonce authNonce;
+        if (existing.isPresent()) {
+            authNonce = existing.get();
+        } else {
+            authNonce = new AuthNonce();
+            authNonce.setWalletAddress(walletAddress);
+        }
+        
         authNonce.setNonce(nonce);
         authNonce.setCreatedAt(LocalDateTime.now());
         
