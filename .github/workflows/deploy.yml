@@ -1,0 +1,23 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 68.210.186.116
+          username: vrushabh
+          password: ${{ secrets.AZURE_PASSWORD }}
+          script: |
+            cd /home/vrushabh/evault
+            git fetch origin main
+            git reset --hard origin/main
+            echo "${{ secrets.AZURE_PASSWORD }}" | sudo -S docker compose up -d --build
