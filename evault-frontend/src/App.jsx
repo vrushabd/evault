@@ -36,6 +36,28 @@ export function App() {
     }
   }, [walletAddress]);
 
+  useEffect(() => {
+    const token = localStorage.getItem('evault-token');
+    const savedWallet = localStorage.getItem('evault-wallet');
+    const savedRole = localStorage.getItem('evault-role');
+
+    if (token && savedWallet) {
+      setWalletAddress(savedWallet);
+      setIsConnected(true);
+      setCurrentUser({
+        walletAddress: savedWallet,
+        role: savedRole || 'CLIENT',
+        name: `${savedWallet.substring(0, 10)}…`,
+      });
+      // Optionally fetch the latest role in the background
+      api.getUserRole(savedWallet).then((r) => {
+        if (r && r !== savedRole) {
+          applyRoleToUser(savedWallet, r);
+        }
+      }).catch(console.warn);
+    }
+  }, []);
+
   const checkWalletAadhaarBinding = async (addr) => {
     try {
       const res = await api.verifyAadhaar(addr);
@@ -61,6 +83,9 @@ export function App() {
         ? role
         : fallbackRole;
 
+    localStorage.setItem('evault-wallet', address);
+    localStorage.setItem('evault-role', resolved);
+
     setCurrentUser({
       walletAddress: address,
       role: resolved,
@@ -72,6 +97,8 @@ export function App() {
   const handleLogout = () => {
     // Remove JWT
     localStorage.removeItem('evault-token');
+    localStorage.removeItem('evault-wallet');
+    localStorage.removeItem('evault-role');
 
     // Reset application authentication state
     setWalletAddress('');
