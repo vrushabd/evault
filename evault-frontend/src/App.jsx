@@ -145,8 +145,23 @@ export function App() {
       /*
        * STEP 1:
        * Request a fresh nonce from the backend.
+       * If it fails (user not found), auto-register them and retry.
        */
-      const nonce = await api.getNonce(address);
+      let nonce;
+      try {
+        nonce = await api.getNonce(address);
+      } catch (err) {
+        console.warn('Wallet not found, attempting auto-registration...', err);
+        // Auto-register with default values
+        await api.registerWallet({
+          walletAddress: address,
+          name: `User ${address.substring(0, 6)}`,
+          email: `${address.substring(0, 6)}@evault.local`,
+          role: 'CLIENT'
+        });
+        // Try getting the nonce again
+        nonce = await api.getNonce(address);
+      }
 
       /*
        * STEP 2:
