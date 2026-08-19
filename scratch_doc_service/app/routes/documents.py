@@ -217,6 +217,17 @@ async def upload_document(
     user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    import re
+    clean_case_id = caseId.strip().upper()
+    if not re.match(r"^CASE-[A-Z]{2}-\d{3,}$", clean_case_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "success": False,
+                "error": "Invalid Case ID format. Must follow 'CASE-XX-###' (e.g. CASE-BR-001, CASE-MH-002), where XX is the 2-letter State code."
+            }
+        )
+
     await validate_pdf(file)
     
     file_bytes = await file.read()

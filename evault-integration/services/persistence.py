@@ -34,6 +34,65 @@ def _ensure_db() -> None:
             )
             """
         )
+        # Seed standard cases if empty
+        cur = conn.cursor()
+        cur.execute("SELECT count(*) FROM cases")
+        if cur.fetchone()[0] == 0:
+            seed_cases = [
+                {
+                    "caseId": "CASE-BR-001",
+                    "title": "State of Bihar vs Ramesh Sharma",
+                    "court": "District Court Patna, Bihar",
+                    "judge": "Hon. Justice S. Mehta",
+                    "filingDate": "2024-01-15",
+                    "status": "ACTIVE",
+                    "parties": {"petitioner": "State of Bihar", "respondent": "Ramesh Sharma"},
+                    "caseType": "Criminal",
+                    "lawyerBar": "MAH-10492-2020",
+                    "createdBy": "Adv. Ramesh Sharma",
+                },
+                {
+                    "caseId": "CASE-MH-001",
+                    "title": "Ananya Rao vs State of Maharashtra",
+                    "court": "Mumbai High Court, Maharashtra",
+                    "judge": "Hon. Justice S. Mehta",
+                    "filingDate": "2024-02-10",
+                    "status": "ACTIVE",
+                    "parties": {"petitioner": "Ananya Rao", "respondent": "State of Maharashtra"},
+                    "caseType": "Bail Application",
+                    "lawyerBar": "MAH-10492-2020",
+                    "createdBy": "Adv. Ramesh Sharma",
+                },
+                {
+                    "caseId": "CASE-DL-001",
+                    "title": "TechCorp India vs Union of India",
+                    "court": "Delhi High Court, New Delhi",
+                    "judge": "Hon. Justice R.K. Sharma",
+                    "filingDate": "2024-03-20",
+                    "status": "ACTIVE",
+                    "parties": {"petitioner": "TechCorp India", "respondent": "Union of India"},
+                    "caseType": "Commercial Appeal",
+                    "lawyerBar": "DL-9821-2018",
+                    "createdBy": "Adv. Vikram Seth",
+                },
+                {
+                    "caseId": "CASE-KA-001",
+                    "title": "Bengaluru Metro Project vs Citizen Forum",
+                    "court": "Karnataka High Court, Karnataka",
+                    "judge": "Hon. Justice N. Kumar",
+                    "filingDate": "2024-04-05",
+                    "status": "PENDING",
+                    "parties": {"petitioner": "Citizen Forum", "respondent": "Bengaluru Metro"},
+                    "caseType": "Public Interest Litigation",
+                    "lawyerBar": "KA-5512-2015",
+                    "createdBy": "Adv. S. Rao",
+                },
+            ]
+            for sc in seed_cases:
+                conn.execute(
+                    "INSERT INTO cases (case_id, payload, updated_at) VALUES (?, ?, datetime('now'))",
+                    (sc["caseId"], json.dumps(sc)),
+                )
         conn.commit()
 
 

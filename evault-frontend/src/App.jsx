@@ -7,6 +7,7 @@ import AuthAndAuditModule from './components/AuthAndAuditModule';
 import JudgeDashboard from './components/JudgeDashboard';
 import LawyerDashboard from './components/LawyerDashboard';
 import ClientDashboard from './components/ClientDashboard';
+import UserAuthGate from './components/UserAuthGate';
 import api from './services/api';
 
 import {
@@ -17,39 +18,50 @@ import {
   User,
   Gavel,
   FileText,
+  Lock,
+  SignOut,
 } from '@phosphor-icons/react';
 
 import { AnimatePresence, motion } from 'framer-motion';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('lawyer-ws');
-
   const [walletAddress, setWalletAddress] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [aadhaarStatus, setAadhaarStatus] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [filingPrefill, setFilingPrefill] = useState(null);
 
+  // Check identity binding when wallet address changes
   useEffect(() => {
     if (walletAddress) {
       checkWalletAadhaarBinding(walletAddress);
     }
   }, [walletAddress]);
 
+  // Restore existing authenticated session from localStorage
   useEffect(() => {
     const token = localStorage.getItem('evault-token');
     const savedWallet = localStorage.getItem('evault-wallet');
     const savedRole = localStorage.getItem('evault-role');
+    const savedName = localStorage.getItem('evault-name');
 
     if (token && savedWallet) {
       setWalletAddress(savedWallet);
       setIsConnected(true);
-      setCurrentUser({
+      const restoredUser = {
         walletAddress: savedWallet,
         role: savedRole || 'CLIENT',
-        name: `${savedWallet.substring(0, 10)}…`,
-      });
-      // Optionally fetch the latest role in the background
+        name: savedName || `${savedWallet.substring(0, 10)}…`,
+      };
+      setCurrentUser(restoredUser);
+
+      // Set default tab based on restored role
+      if (savedRole === 'JUDGE') setActiveTab('judge-ws');
+      else if (savedRole === 'CITIZEN' || savedRole === 'CLIENT') setActiveTab('client-ws');
+      else setActiveTab('lawyer-ws');
+
+      // Refresh role in background if available
       api.getUserRole(savedWallet).then((r) => {
         if (r && r !== savedRole) {
           applyRoleToUser(savedWallet, r);
@@ -61,193 +73,80 @@ export function App() {
   const checkWalletAadhaarBinding = async (addr) => {
     try {
       const res = await api.verifyAadhaar(addr);
-
       if (res.success) {
         setAadhaarStatus(res.data);
       }
     } catch (e) {
-      console.warn(
-        'Could not verify wallet identity binding:',
-        e
-      );
+      console.warn('Could not verify wallet identity binding:', e);
     }
   };
 
-  const applyRoleToUser = (
-    address,
-    role,
-    fallbackRole = 'CLIENT'
-  ) => {
-    const resolved =
-      typeof role === 'string' && role
-        ? role
-        : fallbackRole;
-
+  const applyRoleToUser = (address, role, fallbackRole = 'CLIENT') => {
+    const resolved = typeof role === 'string' && role ? role : fallbackRole;
+    const currentStoredName = localStorage.getItem('evault-name');
     localStorage.setItem('evault-wallet', address);
     localStorage.setItem('evault-role', resolved);
 
     setCurrentUser({
       walletAddress: address,
       role: resolved,
-      name: `${address.substring(0, 10)}…`,
+      name: currentStoredName || `${address.substring(0, 10)}…`,
     });
   };
 
-  // Properly clears the entire eVault session
+  // Completely clears eVault session & locks the system
   const handleLogout = () => {
-    // Remove JWT
     localStorage.removeItem('evault-token');
     localStorage.removeItem('evault-wallet');
     localStorage.removeItem('evault-role');
+    localStorage.removeItem('evault-name');
 
-    // Reset application authentication state
     setWalletAddress('');
     setIsConnected(false);
     setCurrentUser(null);
     setAadhaarStatus(null);
     setFilingPrefill(null);
 
-    console.log('eVault session cleared.');
+    console.log('eVault session cleared. System locked.');
   };
 
   const handleConnectWallet = async () => {
     if (!window.ethereum) {
-      alert('MetaMask is required to authenticate.');
+      alert('MetaMask extension is required to connect to eVault.');
       return;
     }
 
     try {
-      /*
-       * IMPORTANT:
-       * Always remove any old authentication token before
-       * starting a new authentication flow.
-       */
-      localStorage.removeItem('evault-token');
-
-      /*
-       * Reset current application authentication state.
-       * This ensures every login starts fresh.
-       */
-      setCurrentUser(null);
-      setIsConnected(false);
-
-      // Request wallet connection
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
 
-      if (!accounts || !accounts.length) {
-        return;
+      if (accounts && accounts.length > 0) {
+        setWalletAddress(accounts[0]);
+        setIsConnected(true);
       }
-
-      const address = accounts[0];
-
-      /*
-       * STEP 1:
-       * Request a fresh nonce from the backend.
-       * If it fails (user not found), auto-register them and retry.
-       */
-      let nonce;
-      try {
-        nonce = await api.getNonce(address);
-      } catch (err) {
-        console.warn('Wallet not found, attempting auto-registration...', err);
-        // Auto-register with default values
-        await api.registerWallet({
-          walletAddress: address,
-          name: `User ${address.substring(0, 6)}`,
-          email: `${address.substring(0, 6)}@evault.local`,
-          role: 'CLIENT'
-        });
-        // Try getting the nonce again
-        nonce = await api.getNonce(address);
-      }
-
-      /*
-       * STEP 2:
-       * Ask MetaMask to sign the fresh nonce.
-       *
-       * Since the nonce should be new each time,
-       * this creates a fresh authentication proof.
-       */
-      const signature = await window.ethereum.request({
-        method: 'personal_sign',
-        params: [nonce, address],
-      });
-
-      /*
-       * STEP 3:
-       * Send wallet address, nonce and signature
-       * to the Auth Service.
-       */
-      const loginResult = await api.walletLogin(
-        address,
-        nonce,
-        signature
-      );
-
-      /*
-       * STEP 4:
-       * Authentication must return a valid JWT.
-       */
-      if (!loginResult || !loginResult.token) {
-        throw new Error(
-          'Authentication failed: No JWT token received.'
-        );
-      }
-
-      // Store the newly generated token
-      localStorage.setItem(
-        'evault-token',
-        loginResult.token
-      );
-
-      // Mark user as authenticated
-      setWalletAddress(address);
-      setIsConnected(true);
-
-      /*
-       * Fetch user role.
-       */
-      try {
-        const role = await api.getUserRole(address);
-
-        applyRoleToUser(
-          address,
-          role,
-          loginResult.role || 'CLIENT'
-        );
-      } catch (roleError) {
-        console.warn(
-          'Could not fetch user role. Using login role.',
-          roleError
-        );
-
-        applyRoleToUser(
-          address,
-          loginResult.role,
-          'CLIENT'
-        );
-      }
-
-      // Check Aadhaar binding
-      checkWalletAadhaarBinding(address);
-
     } catch (err) {
-      /*
-       * If the user rejects MetaMask OR authentication fails,
-       * make sure the application remains logged out.
-       */
-      console.warn(
-        'MetaMask authentication failed or was cancelled:',
-        err
-      );
+      console.warn('MetaMask connection error or cancelled:', err);
+    }
+  };
 
-      handleLogout();
+  const handleAuthenticateSuccess = (userData) => {
+    setCurrentUser(userData);
+    setIsConnected(true);
+    setWalletAddress(userData.walletAddress);
 
-      alert(
-        'Authentication failed or was cancelled. Please try again.'
-      );
+    // Automatically navigate to the role's appropriate workspace
+    const userRole = (userData.role || '').toUpperCase();
+    if (userRole === 'JUDGE') {
+      setActiveTab('judge-ws');
+    } else if (userRole === 'CITIZEN' || userRole === 'CLIENT') {
+      setActiveTab('client-ws');
+    } else {
+      setActiveTab('lawyer-ws');
+    }
+
+    if (userData.walletAddress) {
+      checkWalletAadhaarBinding(userData.walletAddress);
     }
   };
 
@@ -258,7 +157,7 @@ export function App() {
       onClick={() => setActiveTab(id)}
       className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all text-xs ${
         activeTab === id
-          ? 'bg-paper-rust text-white font-bold'
+          ? 'bg-paper-rust text-white font-bold shadow-offset-sm'
           : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
       }`}
     >
@@ -267,27 +166,40 @@ export function App() {
     </button>
   );
 
-  const role = (
-    currentUser?.role || ''
-  ).toUpperCase();
+  const role = (currentUser?.role || '').toUpperCase();
+
+  // If the user has not authenticated, display the mandatory Locking Authentication Portal
+  const isLocked = !currentUser;
 
   return (
     <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
+      {/* Locked Authentication Gate */}
+      <AnimatePresence>
+        {isLocked && (
+          <UserAuthGate
+            walletAddress={walletAddress}
+            isConnected={isConnected}
+            onConnectWallet={handleConnectWallet}
+            onDisconnectWallet={handleLogout}
+            onAuthenticateSuccess={handleAuthenticateSuccess}
+          />
+        )}
+      </AnimatePresence>
 
+      {/* Main Top Navigation */}
       <Navbar
         walletAddress={walletAddress}
-        isConnected={isConnected}
+        isConnected={isConnected && !isLocked}
         onConnectWallet={handleConnectWallet}
         aadhaarStatus={aadhaarStatus}
         onOpenIdentity={() => setActiveTab('aadhaar')}
       />
 
+      {/* Main Workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
-
+        {/* Navigation Workspace Ribbon */}
         <div className="bg-paper-card border border-paper-border p-1.5 shadow-offset-sm rounded-sm space-y-2">
-
           <div className="flex flex-wrap gap-1 font-heading text-xs font-semibold px-1 pt-1">
-
             <span className="text-[10px] uppercase tracking-wider text-paper-muted self-center px-2">
               Workspace
             </span>
@@ -313,13 +225,11 @@ export function App() {
             {tabBtn(
               'auth',
               <ShieldCheck size={15} weight="bold" />,
-              'Audit'
+              'Audit Trail'
             )}
-
           </div>
 
           <div className="flex flex-wrap gap-1 font-heading text-xs font-semibold border-t border-paper-border/60 px-1 pt-2">
-
             <span className="text-[10px] uppercase tracking-wider text-paper-muted self-center px-2">
               Tools
             </span>
@@ -341,22 +251,33 @@ export function App() {
               <Fingerprint size={15} weight="bold" />,
               'Identity'
             )}
-
           </div>
 
           {role && (
-            <p className="text-[10px] text-paper-muted px-3 pb-1 font-body">
-              Signed in as{' '}
-              <span className="font-mono text-paper-ink">
-                {role}
-              </span>
-            </p>
-          )}
+            <div className="flex items-center justify-between px-3 pb-1 border-t border-paper-border/30 pt-1.5">
+              <p className="text-[10px] text-paper-muted font-body">
+                Authenticated Identity:{' '}
+                <span className="font-bold text-paper-rust">
+                  {currentUser?.name || 'Authorized User'}
+                </span>{' '}
+                (<span className="font-mono text-paper-ink">{role}</span>)
+              </p>
 
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-[10px] font-mono text-paper-muted hover:text-paper-rust transition flex items-center space-x-1"
+                title="Lock System & Logout"
+              >
+                <SignOut size={12} weight="bold" />
+                <span>LOCK & LOGOUT</span>
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Tab View Container */}
         <AnimatePresence mode="wait">
-
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 8 }}
@@ -364,7 +285,6 @@ export function App() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
           >
-
             {activeTab === 'classifier' && (
               <ClassifierModule
                 onSecureDocument={(meta) => {
@@ -392,9 +312,6 @@ export function App() {
               <AuthAndAuditModule
                 currentUser={currentUser}
                 walletAddress={walletAddress}
-                onLoginSuccess={(usr) =>
-                  setCurrentUser(usr)
-                }
                 onLogout={handleLogout}
               />
             )}
@@ -418,43 +335,30 @@ export function App() {
                 walletAddress={walletAddress}
               />
             )}
-
           </motion.div>
-
         </AnimatePresence>
-
       </main>
 
+      {/* Footer */}
       <footer className="border-t border-paper-border bg-paper-card py-5 text-xs text-paper-muted font-body">
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-3">
-
           <div className="flex items-center space-x-2">
-
             <ShieldCheck
               size={18}
               weight="bold"
               className="text-paper-rust"
             />
-
             <span className="font-heading font-semibold text-paper-ink">
               eVault
             </span>
-
-            <span>
-              · Secure Legal Document Vault
-            </span>
-
+            <span>· Secure Legal Document Vault</span>
           </div>
 
           <div className="text-[11px]">
             Encrypted storage · Blockchain integrity · Role-based access
           </div>
-
         </div>
-
       </footer>
-
     </div>
   );
 }

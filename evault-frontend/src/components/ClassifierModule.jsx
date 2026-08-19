@@ -293,13 +293,23 @@ export function ClassifierModule({ onSecureDocument }) {
           {onSecureDocument && (
             <button
               type="button"
-              onClick={() => onSecureDocument({
-                documentType: result.documentType,
-                caseNumber: result.caseNumber,
-                court: result.court,
-                parties: result.parties,
-                file: selectedFile,
-              })}
+              onClick={() => {
+                let formattedCase = result.caseNumber ? String(result.caseNumber).trim().toUpperCase() : 'CASE-BR-001';
+                if (!/^CASE-[A-Z]{2}-\d{3,}$/.test(formattedCase)) {
+                  const stateMatch = formattedCase.match(/\b(MH|BR|DL|KA|UP|WB|TN|GJ|RJ|MP|KL|AP|TS|PB|HR)\b/i);
+                  const numMatch = formattedCase.match(/\d{3,}/);
+                  const state = stateMatch ? stateMatch[1].toUpperCase() : 'BR';
+                  const num = numMatch ? numMatch[0] : '001';
+                  formattedCase = `CASE-${state}-${num}`;
+                }
+                onSecureDocument({
+                  documentType: result.documentType,
+                  caseNumber: formattedCase,
+                  court: result.court,
+                  parties: result.parties,
+                  file: selectedFile,
+                });
+              }}
               className="btn-editorial-rust font-heading"
             >
               <FileText size={16} weight="bold" />

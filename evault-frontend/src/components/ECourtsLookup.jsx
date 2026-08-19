@@ -3,13 +3,14 @@ import { MagnifyingGlass, Buildings, User, Scales, Calendar, CaretRight, Warning
 import api from '../services/api';
 
 const QUICK_CASES = [
-  { id: 'CASE-MH-2024-001', court: 'Mumbai High Court' },
-  { id: 'CASE-DL-2024-001', court: 'Delhi High Court' },
-  { id: 'CASE-KA-2024-001', court: 'Karnataka High Court' },
+  { id: 'CASE-BR-001', court: 'District Court Patna' },
+  { id: 'CASE-MH-001', court: 'Mumbai High Court' },
+  { id: 'CASE-DL-001', court: 'Delhi High Court' },
+  { id: 'CASE-KA-001', court: 'Karnataka High Court' },
 ];
 
 export function ECourtsLookup() {
-  const [searchQuery, setSearchQuery] = useState('CASE-MH-2024-001');
+  const [searchQuery, setSearchQuery] = useState('CASE-BR-001');
   const [judgeQuery, setJudgeQuery] = useState('');
   const [lawyerQuery, setLawyerQuery] = useState('');
   const [activeTab, setActiveTab] = useState('case');
@@ -21,12 +22,17 @@ export function ECourtsLookup() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    handleSearchCase('CASE-MH-2024-001');
+    handleSearchCase('CASE-BR-001');
   }, []);
 
   const handleSearchCase = async (idToSearch) => {
-    const caseId = idToSearch || searchQuery;
-    if (!caseId.trim()) return;
+    const caseId = (idToSearch || searchQuery).trim().toUpperCase();
+    if (!caseId) return;
+    
+    if (!/^CASE-[A-Z]{2}-\d{3,}$/.test(caseId)) {
+      setError("Invalid Case ID format. Must follow 'CASE-XX-###' (e.g. CASE-BR-001, CASE-MH-001), where XX is the 2-letter State code.");
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -189,9 +195,9 @@ export function ECourtsLookup() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Enter Case ID (e.g. CASE-MH-2024-001)..."
-                  className="w-full bg-paper-bg border border-paper-border rounded-sm pl-9 pr-3 py-2 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                  onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+                  placeholder="Enter Case ID (e.g. CASE-BR-001)..."
+                  className="w-full bg-paper-bg border border-paper-border rounded-sm pl-9 pr-3 py-2 text-xs text-paper-ink font-mono focus:outline-none focus:border-paper-ink"
                 />
               </div>
               <button

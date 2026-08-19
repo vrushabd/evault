@@ -3,7 +3,7 @@ import { User, CheckCircle, Warning, QrCode, ShieldCheck, ArrowsClockwise, Downl
 import api from '../services/api';
 import { StaggerContainer, StaggerItem, FadeIn } from './common/FadeIn';
 
-const DEFAULT_CASE = 'CASE-MH-2024-001';
+const DEFAULT_CASE = 'CASE-BR-001';
 
 const DOWNLOAD_PHASES = [
   'Authorizing access…',
@@ -138,9 +138,9 @@ export function ClientDashboard({ walletAddress }) {
               <input
                 type="text"
                 value={caseId}
-                onChange={(e) => setCaseId(e.target.value)}
+                onChange={(e) => setCaseId(e.target.value.toUpperCase())}
                 className="bg-paper-bg border border-paper-border rounded-sm px-2 py-1.5 text-[11px] font-mono w-44"
-                placeholder="Case ID"
+                placeholder="e.g. CASE-BR-001"
               />
               <button type="button" onClick={() => loadDocs(caseId)} className="btn-editorial text-[11px] font-heading">
                 Load

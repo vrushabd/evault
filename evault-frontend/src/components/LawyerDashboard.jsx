@@ -50,8 +50,14 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
       setError('Please select a legal document PDF.');
       return;
     }
-    if (!caseId.trim()) {
-      setError('Enter the associated case ID.');
+    const cleanCaseId = caseId.trim().toUpperCase();
+    if (!cleanCaseId) {
+      setError('Enter the associated case ID (e.g. CASE-BR-001).');
+      return;
+    }
+    const caseIdRegex = /^CASE-[A-Z]{2}-\d{3,}$/;
+    if (!caseIdRegex.test(cleanCaseId)) {
+      setError("Invalid Case ID format. Must follow 'CASE-XX-###' (e.g. CASE-BR-001, CASE-MH-102), where the 2 letters represent the State code.");
       return;
     }
     const token = localStorage.getItem('evault-token');
@@ -209,15 +215,29 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-paper-muted uppercase mb-1 tracking-wide">
-                  Associated case ID
+                  Associated case ID (Format: CASE-BR-001)
                 </label>
                 <input
                   type="text"
                   value={caseId}
-                  onChange={(e) => setCaseId(e.target.value)}
-                  placeholder="CASE-…"
-                  className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink font-mono focus:outline-none focus:border-paper-ink"
+                  onChange={(e) => {
+                    setCaseId(e.target.value.toUpperCase());
+                    setError(null);
+                  }}
+                  placeholder="e.g. CASE-BR-001"
+                  className={`w-full bg-paper-bg border rounded-sm p-2.5 text-xs text-paper-ink font-mono focus:outline-none transition ${
+                    caseId
+                      ? /^CASE-[A-Z]{2}-\d{3,}$/.test(caseId.trim().toUpperCase())
+                        ? 'border-emerald-500 focus:border-emerald-600'
+                        : 'border-amber-500 focus:border-amber-600'
+                      : 'border-paper-border focus:border-paper-ink'
+                  }`}
                 />
+                {caseId && !/^CASE-[A-Z]{2}-\d{3,}$/.test(caseId.trim().toUpperCase()) && (
+                  <p className="text-[10px] text-amber-600 mt-1 font-mono">
+                    Format required: CASE-XX-### (e.g. CASE-BR-001)
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] text-paper-muted uppercase mb-1 tracking-wide">
