@@ -17,7 +17,9 @@ const docClient = createClient(120000);
 
 const attachAuthToken = (config) => {
   const token = localStorage.getItem('evault-token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && token !== 'null' && token !== 'undefined' && token.trim() !== '') {
+    config.headers.Authorization = `Bearer ${token.trim()}`;
+  }
   return config;
 };
 
@@ -184,6 +186,16 @@ export const api = {
   // =========================================================
   // Aadhaar Identity Binding
   // =========================================================
+  sendAadhaarOtp: async (aadhaarNumber, walletAddress) => {
+    const res = await apiClient.post('/aadhaar/send-otp', { aadhaarNumber, walletAddress });
+    return res.data;
+  },
+
+  verifyAadhaarOtp: async (txnId, otp, walletAddress) => {
+    const res = await apiClient.post('/aadhaar/verify-otp', { txnId, otp, walletAddress });
+    return res.data;
+  },
+
   bindAadhaar: async (aadhaarNumber, walletAddress) => {
     const res = await apiClient.post('/aadhaar/bind', { aadhaarNumber, walletAddress });
     return res.data;
@@ -191,6 +203,11 @@ export const api = {
 
   verifyAadhaar: async (walletAddress) => {
     const res = await apiClient.get(`/aadhaar/verify/${encodeURIComponent(walletAddress)}`);
+    return res.data;
+  },
+
+  unbindAadhaar: async (walletAddress) => {
+    const res = await apiClient.post(`/aadhaar/unbind/${encodeURIComponent(walletAddress)}`);
     return res.data;
   },
 

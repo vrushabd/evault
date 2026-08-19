@@ -7,19 +7,30 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
-    ],
-    "name": "DocumentApproved",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": true, "internalType": "address", "name": "accessor", "type": "address" },
-      { "indexed": false, "internalType": "string", "name": "action", "type": "string" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "accessor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "action",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
     "name": "DocumentAccessed",
     "type": "event"
@@ -27,10 +38,30 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "string", "name": "newDocId", "type": "string" },
-      { "indexed": true, "internalType": "string", "name": "previousDocId", "type": "string" },
-      { "indexed": false, "internalType": "uint256", "name": "version", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "newDocId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "previousDocId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "version",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
     "name": "DocumentAmended",
     "type": "event"
@@ -38,9 +69,43 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": true, "internalType": "address", "name": "revokedBy", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "DocumentApproved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "revokedBy",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
     "name": "DocumentRevoked",
     "type": "event"
@@ -48,10 +113,30 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": true, "internalType": "address", "name": "sharedWith", "type": "address" },
-      { "indexed": true, "internalType": "address", "name": "sharedBy", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sharedWith",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sharedBy",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
     "name": "DocumentShared",
     "type": "event"
@@ -59,10 +144,30 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": true, "internalType": "address", "name": "judge", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-      { "indexed": false, "internalType": "uint8", "name": "totalSignatures", "type": "uint8" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "judge",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "totalSignatures",
+        "type": "uint8"
+      }
     ],
     "name": "DocumentSigned",
     "type": "event"
@@ -70,11 +175,36 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": false, "internalType": "string", "name": "caseId", "type": "string" },
-      { "indexed": false, "internalType": "string", "name": "ipfsCID", "type": "string" },
-      { "indexed": true, "internalType": "address", "name": "uploadedBy", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "caseId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "ipfsCID",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "uploadedBy",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
     "name": "DocumentStored",
     "type": "event"
@@ -82,37 +212,94 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
-      { "indexed": false, "internalType": "enum eVault.Role", "name": "role", "type": "uint8" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
-    ],
-    "name": "RoleAssigned",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "string", "name": "docId", "type": "string" },
-      { "indexed": true, "internalType": "address", "name": "grantedTo", "type": "address" },
-      { "indexed": false, "internalType": "bytes32", "name": "permissionHash", "type": "bytes32" },
-      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "grantedTo",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "permissionHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
     ],
     "name": "PermissionCommitted",
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum eVault.Role",
+        "name": "role",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "RoleAssigned",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "REQUIRED_SIGNATURES",
-    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "newDocId", "type": "string" },
-      { "internalType": "string", "name": "previousDocId", "type": "string" },
-      { "internalType": "string", "name": "newCID", "type": "string" },
-      { "internalType": "string", "name": "docType", "type": "string" }
+      {
+        "internalType": "string",
+        "name": "newDocId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "previousDocId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "newCID",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "docType",
+        "type": "string"
+      }
     ],
     "name": "amendDocument",
     "outputs": [],
@@ -121,8 +308,35 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "user", "type": "address" },
-      { "internalType": "enum eVault.Role", "name": "role", "type": "uint8" }
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "approvedDocuments",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "enum eVault.Role",
+        "name": "role",
+        "type": "uint8"
+      }
     ],
     "name": "assignRole",
     "outputs": [],
@@ -131,9 +345,21 @@
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "address", "name": "grantedTo", "type": "address" },
-      { "internalType": "bytes32", "name": "permissionHash", "type": "bytes32" }
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "grantedTo",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "permissionHash",
+        "type": "bytes32"
+      }
     ],
     "name": "commitPermission",
     "outputs": [],
@@ -141,38 +367,110 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "", "type": "string" }],
-    "name": "approvedDocuments",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "string", "name": "", "type": "string" }],
-    "name": "documents",
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "documentContentHashes",
     "outputs": [
-      { "internalType": "string", "name": "caseId", "type": "string" },
-      { "internalType": "string", "name": "ipfsCID", "type": "string" },
-      { "internalType": "string", "name": "docType", "type": "string" },
-      { "internalType": "address", "name": "uploadedBy", "type": "address" },
-      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-      { "internalType": "uint256", "name": "version", "type": "uint256" },
-      { "internalType": "string", "name": "previousDocId", "type": "string" },
-      { "internalType": "enum eVault.DocStatus", "name": "status", "type": "uint8" }
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "docId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "documents",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "caseId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "ipfsCID",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "docType",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "uploadedBy",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "version",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "previousDocId",
+        "type": "string"
+      },
+      {
+        "internalType": "enum eVault.DocStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      }
+    ],
     "name": "getAuditLog",
     "outputs": [
       {
         "components": [
-          { "internalType": "address", "name": "accessor", "type": "address" },
-          { "internalType": "string", "name": "action", "type": "string" },
-          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-          { "internalType": "string", "name": "details", "type": "string" }
+          {
+            "internalType": "address",
+            "name": "accessor",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "action",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "details",
+            "type": "string"
+          }
         ],
         "internalType": "struct eVault.AuditEntry[]",
         "name": "",
@@ -183,26 +481,76 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "caseId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "caseId",
+        "type": "string"
+      }
+    ],
     "name": "getCaseAccess",
-    "outputs": [{ "internalType": "address[]", "name": "", "type": "address[]" }],
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "docId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      }
+    ],
     "name": "getDocument",
     "outputs": [
       {
         "components": [
-          { "internalType": "string", "name": "caseId", "type": "string" },
-          { "internalType": "string", "name": "ipfsCID", "type": "string" },
-          { "internalType": "string", "name": "docType", "type": "string" },
-          { "internalType": "address", "name": "uploadedBy", "type": "address" },
-          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-          { "internalType": "uint256", "name": "version", "type": "uint256" },
-          { "internalType": "string", "name": "previousDocId", "type": "string" },
-          { "internalType": "enum eVault.DocStatus", "name": "status", "type": "uint8" }
+          {
+            "internalType": "string",
+            "name": "caseId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "ipfsCID",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "docType",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "uploadedBy",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "version",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "previousDocId",
+            "type": "string"
+          },
+          {
+            "internalType": "enum eVault.DocStatus",
+            "name": "status",
+            "type": "uint8"
+          }
         ],
         "internalType": "struct eVault.Document",
         "name": "",
@@ -213,42 +561,102 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
     "name": "getRole",
-    "outputs": [{ "internalType": "enum eVault.Role", "name": "", "type": "uint8" }],
+    "outputs": [
+      {
+        "internalType": "enum eVault.Role",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "docId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      }
+    ],
     "name": "getSignatureCount",
-    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "docId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      }
+    ],
     "name": "isApproved",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "owner",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
     "name": "permissionCommitments",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "docId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      }
+    ],
     "name": "revokeDocument",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -256,8 +664,16 @@
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "address", "name": "withAddress", "type": "address" }
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "withAddress",
+        "type": "address"
+      }
     ],
     "name": "shareDocument",
     "outputs": [],
@@ -265,25 +681,59 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "docId", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      }
+    ],
     "name": "signDocument",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
     "name": "signatureCount",
-    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "string", "name": "caseId", "type": "string" },
-      { "internalType": "string", "name": "ipfsCID", "type": "string" },
-      { "internalType": "string", "name": "docType", "type": "string" }
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "caseId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "ipfsCID",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "docType",
+        "type": "string"
+      }
     ],
     "name": "storeDocument",
     "outputs": [],
@@ -292,11 +742,31 @@
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "string", "name": "caseId", "type": "string" },
-      { "internalType": "string", "name": "ipfsCID", "type": "string" },
-      { "internalType": "string", "name": "docType", "type": "string" },
-      { "internalType": "bytes32", "name": "documentHash", "type": "bytes32" }
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "caseId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "ipfsCID",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "docType",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "documentHash",
+        "type": "bytes32"
+      }
     ],
     "name": "storeDocumentWithHash",
     "outputs": [],
@@ -304,51 +774,108 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "", "type": "string" }],
-    "name": "documentContentHashes",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "string", "name": "cidToVerify", "type": "string" },
-      { "internalType": "bytes32", "name": "hashToVerify", "type": "bytes32" }
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
-    "name": "verifyDocumentIntegrity",
-    "outputs": [
-      { "internalType": "bool", "name": "cidMatch", "type": "bool" },
-      { "internalType": "bool", "name": "hashMatch", "type": "bool" }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "name": "userRoles",
-    "outputs": [{ "internalType": "enum eVault.Role", "name": "", "type": "uint8" }],
+    "outputs": [
+      {
+        "internalType": "enum eVault.Role",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "string", "name": "cidToVerify", "type": "string" }
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "cidToVerify",
+        "type": "string"
+      }
     ],
     "name": "verifyDocument",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "docId", "type": "string" },
-      { "internalType": "address", "name": "grantedTo", "type": "address" },
-      { "internalType": "bytes32", "name": "candidateHash", "type": "bytes32" }
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "cidToVerify",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "hashToVerify",
+        "type": "bytes32"
+      }
+    ],
+    "name": "verifyDocumentIntegrity",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "cidMatch",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "hashMatch",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "docId",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "grantedTo",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "candidateHash",
+        "type": "bytes32"
+      }
     ],
     "name": "verifyPermission",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   }

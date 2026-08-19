@@ -118,3 +118,14 @@ def get_aadhaar_binding(wallet: str) -> Optional[Dict[str, Any]]:
         "walletAddress": row["wallet_display"],
         "boundAt": row["bound_at"],
     }
+
+
+def delete_aadhaar_binding(wallet: str) -> bool:
+    if not wallet:
+        return False
+    with connect() as conn:
+        cursor = conn.execute(
+            "DELETE FROM aadhaar_bindings WHERE wallet_address = ?",
+            (wallet.lower(),),
+        )
+        return cursor.rowcount > 0
