@@ -121,8 +121,6 @@ services:
     container_name: evault-frontend
     depends_on:
       - evault-gateway
-    environment:
-      - VITE_GATEWAY_URL=http://68.210.186.116:8080
     ports:
       - "80:80"
 
