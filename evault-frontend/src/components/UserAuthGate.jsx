@@ -16,9 +16,10 @@ import {
   Fingerprint,
   Copy,
   SignOut,
-  XCircle,
   Eye,
-  EyeSlash
+  EyeSlash,
+  UserPlus,
+  SignIn
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
@@ -30,9 +31,10 @@ export function UserAuthGate({
   onDisconnectWallet,
   onAuthenticateSuccess,
 }) {
-  const [authMode, setAuthMode] = useState('register'); // 'register' | 'login'
+  // Default is 'login' as requested
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
   
-  // All fields start completely empty with no default pre-filled values
+  // All registration fields start completely empty
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,8 +44,14 @@ export function UserAuthGate({
   const [courtName, setCourtName] = useState('');
   const [policeId, setPoliceId] = useState('');
 
+  // Login specific fields
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null); // 'NOT_REGISTERED' | 'ALREADY_REGISTERED' | null
   const [successMsg, setSuccessMsg] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -76,74 +84,128 @@ export function UserAuthGate({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleWalletSignatureLogin = async () => {
+  // -------------------------------------------------------------
+  // LOG IN HANDLER (Wallet Signature & Credentials)
+  // -------------------------------------------------------------
+  const handleWalletLogin = async () => {
     if (!window.ethereum || !walletAddress) {
-      setError('Please ensure MetaMask is connected.');
+      setError('Please connect your MetaMask wallet first.');
       return;
     }
 
     setLoading(true);
     setError(null);
-    setSuccessMsg('Requesting signature proof from MetaMask…');
+    setErrorType(null);
+    setSuccessMsg('Requesting authentication challenge from Auth Service…');
 
     try {
+      // Step 1: Request fresh nonce for this wallet
       let nonce;
       try {
         nonce = await api.getNonce(walletAddress);
-      } catch (err) {
-        console.warn('Wallet not registered in auth database, auto-registering…', err);
-        await api.registerWallet({
-          walletAddress,
-          name: name || `User ${walletAddress.substring(0, 6)}`,
-          email: email || `${walletAddress.substring(0, 6)}@evault.local`,
-          role: role || 'CLIENT',
-          barNumber: role === 'LAWYER' ? barNumber : undefined,
-        });
-        nonce = await api.getNonce(walletAddress);
+      } catch (nonceErr) {
+        console.warn('Nonce fetch error:', nonceErr);
+        // If user is not found in database
+        setErrorType('NOT_REGISTERED');
+        throw new Error(
+          'No registered account found for this Ethereum wallet. Please register your account first.'
+        );
       }
 
+      setSuccessMsg('Please sign the authentication nonce in MetaMask…');
+
+      // Step 2: Request MetaMask signature
       const signature = await window.ethereum.request({
         method: 'personal_sign',
         params: [nonce, walletAddress],
       });
 
+      // Step 3: Validate signature with backend
       const loginResult = await api.walletLogin(walletAddress, nonce, signature);
 
-      if (loginResult && loginResult.token) {
-        localStorage.setItem('evault-token', loginResult.token);
+      if (!loginResult || !loginResult.token) {
+        throw new Error('Authentication failed: No valid session token returned.');
       }
 
-      const resolvedRole = loginResult?.role || role || 'CLIENT';
+      // Step 4: Save session & apply role
+      localStorage.setItem('evault-token', loginResult.token);
       localStorage.setItem('evault-wallet', walletAddress);
-      localStorage.setItem('evault-role', resolvedRole);
-      localStorage.setItem('evault-name', name || `${walletAddress.substring(0, 10)}…`);
+      const userRole = loginResult.role || 'CLIENT';
+      localStorage.setItem('evault-role', userRole);
 
-      setSuccessMsg('Authentication verified! Unlocking workspace…');
+      setSuccessMsg('Authentication successful! Unlocking eVault…');
 
       setTimeout(() => {
         onAuthenticateSuccess({
           walletAddress,
-          role: resolvedRole,
-          name: name || `${walletAddress.substring(0, 10)}…`,
-          email,
-          barNumber: role === 'LAWYER' ? barNumber : null,
-          courtName: role === 'JUDGE' ? courtName : null,
+          role: userRole,
+          name: `${walletAddress.substring(0, 10)}…`,
+          token: loginResult.token,
         });
       }, 700);
 
     } catch (err) {
-      console.error('Wallet authentication error:', err);
+      console.error('Wallet Login Error:', err);
       if (err.code === 4001) {
-        setError('MetaMask signature request was cancelled.');
+        setError('MetaMask signature request was rejected.');
       } else {
-        setError(err.response?.data?.message || err.message || 'Authentication failed. Please verify credentials.');
+        const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Log in failed.';
+        if (errorMsg.toLowerCase().includes('not found') || errorMsg.toLowerCase().includes('user not found')) {
+          setErrorType('NOT_REGISTERED');
+          setError('No registered account found for this Ethereum wallet. Please register below.');
+        } else {
+          setError(errorMsg);
+        }
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleCredentialsLogin = async (e) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setErrorType(null);
+    setSuccessMsg('Verifying credentials…');
+
+    try {
+      // Demo login helper / credentials check
+      const res = await api.login({ email: loginEmail, password: loginPassword });
+      if (res && res.success) {
+        const user = res.data.user;
+        localStorage.setItem('evault-wallet', walletAddress || '0xDemoWallet');
+        localStorage.setItem('evault-role', user.role || 'LAWYER');
+        localStorage.setItem('evault-name', user.name);
+
+        setSuccessMsg('Credentials verified! Unlocking eVault…');
+        setTimeout(() => {
+          onAuthenticateSuccess({
+            walletAddress: walletAddress || '0xDemoWallet',
+            role: user.role || 'LAWYER',
+            name: user.name,
+            email: user.email,
+          });
+        }, 700);
+      } else {
+        throw new Error(res.error || 'Invalid email or password.');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to authenticate with credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // REGISTRATION HANDLER (1 Wallet = 1 Account)
+  // -------------------------------------------------------------
+  const handleRegister = async (e) => {
     e.preventDefault();
     if (!walletAddress && isConnected) {
       setError('Wallet connection missing.');
@@ -160,7 +222,6 @@ export function UserAuthGate({
       return;
     }
 
-    // Role-specific validation
     if (role === 'LAWYER' && !barNumber.trim()) {
       setError('State Bar Council Enrollment Number is required for Advocates.');
       return;
@@ -192,24 +253,30 @@ export function UserAuthGate({
 
     setLoading(true);
     setError(null);
-    setSuccessMsg('Registering legal identity and generating session keys…');
+    setErrorType(null);
+    setSuccessMsg('Registering your legal profile for this Ethereum wallet…');
 
     try {
-      // Step 1: Register wallet profile with auth service
+      // Step 1: Register wallet with Auth Service (Enforces 1 wallet = 1 account)
       try {
         await api.registerWallet({
           walletAddress: walletAddress || '0xDemoWallet0000000000000000000000000000',
           name: name.trim(),
           email: email.trim(),
-          password,
           role,
           barNumber: role === 'LAWYER' ? barNumber.trim() : undefined,
+          courtId: role === 'JUDGE' ? courtName.trim() : undefined,
         });
       } catch (regErr) {
-        console.warn('Backend registration note (continuing flow):', regErr.message);
+        const regMsg = regErr.response?.data?.message || regErr.response?.data?.error || regErr.message || '';
+        if (regMsg.toLowerCase().includes('already exists') || regMsg.toLowerCase().includes('duplicate')) {
+          setErrorType('ALREADY_REGISTERED');
+          throw new Error('This Ethereum wallet is already registered to an existing account. Please log in instead.');
+        }
+        console.warn('Registration note (continuing signature flow):', regMsg);
       }
 
-      // Step 2: If MetaMask is available, obtain cryptographic signature
+      // Step 2: Complete signature authentication
       let token = null;
       if (window.ethereum && walletAddress) {
         try {
@@ -223,7 +290,7 @@ export function UserAuthGate({
             token = loginResult.token;
           }
         } catch (sigErr) {
-          console.warn('Signature step note:', sigErr.message);
+          console.warn('Signature note:', sigErr.message);
         }
       }
 
@@ -236,7 +303,7 @@ export function UserAuthGate({
       localStorage.setItem('evault-role', role);
       localStorage.setItem('evault-name', name.trim());
 
-      setSuccessMsg('Legal Identity verified! Decrypting vault permissions…');
+      setSuccessMsg('Account registered successfully! Unlocking your legal workspace…');
 
       setTimeout(() => {
         onAuthenticateSuccess({
@@ -251,8 +318,8 @@ export function UserAuthGate({
       }, 700);
 
     } catch (err) {
-      console.error('Registration/Auth error:', err);
-      setError(err.message || 'Authentication error. Please try again.');
+      console.error('Registration Error:', err);
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -264,7 +331,7 @@ export function UserAuthGate({
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="w-full max-w-2xl bg-paper-card border-2 border-paper-border-dark shadow-2xl rounded-sm overflow-hidden my-auto"
+        className="w-full max-w-xl bg-paper-card border-2 border-paper-border-dark shadow-2xl rounded-sm overflow-hidden my-auto"
       >
         {/* Top Security Banner */}
         <div className="bg-paper-surface border-b border-paper-border px-6 py-4 flex flex-wrap items-center justify-between gap-3">
@@ -282,7 +349,7 @@ export function UserAuthGate({
                 </span>
               </div>
               <h1 className="font-heading text-lg font-bold text-paper-ink tracking-tight">
-                User Authentication & Role Verification
+                {authMode === 'login' ? 'Log In to eVault' : 'Register New Legal Account'}
               </h1>
             </div>
           </div>
@@ -300,13 +367,13 @@ export function UserAuthGate({
           )}
         </div>
 
-        {/* Wallet Status Sub-bar */}
+        {/* Connected Wallet Status Bar */}
         <div className="bg-paper-bg px-6 py-3 border-b border-paper-border flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-paper-muted text-[11px]">CONNECTED WALLET:</span>
+            <span className="text-paper-muted text-[11px]">ETHEREUM WALLET:</span>
             <span className="text-paper-ink font-bold font-mono">
-              {walletAddress ? `${walletAddress.substring(0, 10)}…${walletAddress.substring(walletAddress.length - 8)}` : 'No wallet detected'}
+              {walletAddress ? `${walletAddress.substring(0, 10)}…${walletAddress.substring(walletAddress.length - 8)}` : 'No wallet connected'}
             </span>
             {walletAddress && (
               <button
@@ -323,7 +390,7 @@ export function UserAuthGate({
 
           <div className="flex items-center space-x-1.5 text-[11px] text-paper-muted">
             <ShieldCheck size={14} weight="bold" className="text-paper-rust" />
-            <span>Sepolia Ethereum Testnet</span>
+            <span>1 Wallet = 1 Account</span>
           </div>
         </div>
 
@@ -337,10 +404,10 @@ export function UserAuthGate({
               </div>
               <div className="space-y-1">
                 <h3 className="font-heading text-base font-bold text-paper-ink">
-                  MetaMask Wallet Required
+                  Connect MetaMask Wallet
                 </h3>
                 <p className="text-xs text-paper-muted max-w-md mx-auto">
-                  To enter the eVault secure legal repository, connect your Web3 wallet. You will then be prompted to verify your legal identity and credentials.
+                  To enter the eVault system, please connect your Ethereum wallet. You will then be able to log in or register a new legal account.
                 </p>
               </div>
               <button
@@ -353,263 +420,336 @@ export function UserAuthGate({
               </button>
             </div>
           ) : (
-            /* Connected -> User Authentication Form */
-            <div className="space-y-5">
-              {/* Mode Toggle Bar */}
-              <div className="flex items-center justify-between pb-2 border-b border-paper-border">
-                <div className="flex bg-paper-surface border border-paper-border p-1 font-mono text-xs rounded-sm">
-                  <button
-                    type="button"
-                    onClick={() => { setAuthMode('register'); setError(null); }}
-                    className={`px-3 py-1 font-medium transition rounded-sm ${
-                      authMode === 'register'
-                        ? 'bg-paper-card text-paper-ink font-bold border border-paper-border-dark shadow-offset-sm'
-                        : 'text-paper-muted hover:text-paper-ink'
-                    }`}
-                  >
-                    REGISTER LEGAL PROFILE
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAuthMode('login'); setError(null); }}
-                    className={`px-3 py-1 font-medium transition rounded-sm ${
-                      authMode === 'login'
-                        ? 'bg-paper-card text-paper-ink font-bold border border-paper-border-dark shadow-offset-sm'
-                        : 'text-paper-muted hover:text-paper-ink'
-                    }`}
-                  >
-                    WALLET SIGN-IN
-                  </button>
-                </div>
-
-                <span className="text-[10px] font-mono text-paper-muted uppercase tracking-wider">
-                  Fill in your details below
-                </span>
-              </div>
-
-              {/* Form Content */}
-              {authMode === 'register' ? (
-                <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
-                  {/* Role Selector Grid */}
-                  <div>
-                    <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1.5">
-                      1. SELECT LEGAL ACCOUNT ROLE *
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        { id: 'LAWYER', label: 'Advocate', icon: <FileText size={16} weight="bold" />, desc: 'Lawyer / Counsel' },
-                        { id: 'JUDGE', label: 'Judicial Officer', icon: <Gavel size={16} weight="bold" />, desc: 'Judge / Bench' },
-                        { id: 'CITIZEN', label: 'Citizen', icon: <User size={16} weight="bold" />, desc: 'Petitioner / Client' },
-                        { id: 'POLICE', label: 'Police', icon: <ShieldCheck size={16} weight="bold" />, desc: 'Law Enforcement' },
-                      ].map((r) => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => setRole(r.id)}
-                          className={`p-2.5 rounded-sm border text-left flex flex-col justify-between transition-all ${
-                            role === r.id
-                              ? 'border-paper-border-dark bg-paper-rust text-white shadow-offset-sm'
-                              : 'border-paper-border bg-paper-surface text-paper-ink hover:border-paper-ink'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            {r.icon}
-                            {role === r.id && <CheckCircle size={14} weight="fill" />}
-                          </div>
-                          <div className="mt-2">
-                            <span className="font-heading font-bold text-xs block leading-tight">{r.label}</span>
-                            <span className={`text-[9px] block ${role === r.id ? 'text-white/80' : 'text-paper-muted'}`}>{r.desc}</span>
-                          </div>
-                        </button>
-                      ))}
+            <div>
+              {/* ========================================================================= */}
+              {/* VIEW 1: LOG IN (DEFAULT) */}
+              {/* ========================================================================= */}
+              {authMode === 'login' ? (
+                <div className="space-y-5">
+                  <div className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-3">
+                    <div className="flex items-center space-x-2 text-paper-ink font-heading font-bold text-sm">
+                      <Fingerprint size={18} weight="bold" className="text-paper-rust" />
+                      <span>Web3 Cryptographic Signature Log In</span>
                     </div>
-                  </div>
-
-                  {/* Profile Inputs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
-                        FULL LEGAL NAME *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter full legal name…"
-                        className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
-                        OFFICIAL EMAIL ADDRESS *
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@domain.gov.in or email…"
-                        className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Role Specific Fields */}
-                  {role === 'LAWYER' && (
-                    <div>
-                      <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
-                        STATE BAR COUNCIL ENROLLMENT NUMBER *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={barNumber}
-                        onChange={(e) => setBarNumber(e.target.value)}
-                        placeholder="e.g. MAH-10492-2020"
-                        className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
-                      />
-                    </div>
-                  )}
-
-                  {role === 'JUDGE' && (
-                    <div>
-                      <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
-                        COURT BENCH / JURISDICTION *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={courtName}
-                        onChange={(e) => setCourtName(e.target.value)}
-                        placeholder="e.g. High Court of Judicature at Bombay"
-                        className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
-                      />
-                    </div>
-                  )}
-
-                  {role === 'POLICE' && (
-                    <div>
-                      <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
-                        POLICE STATION / FORENSIC BADGE ID *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={policeId}
-                        onChange={(e) => setPoliceId(e.target.value)}
-                        placeholder="e.g. MH-POL-8492"
-                        className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
-                      />
-                    </div>
-                  )}
-
-                  {/* Password Input with Strict Validation */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[10px] text-paper-muted uppercase font-bold">
-                        SECURITY PASSWORD * (8–16 CHARACTERS, ALPHANUMERIC + SPECIAL CHAR)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-[10px] text-paper-muted hover:text-paper-ink flex items-center space-x-1"
-                      >
-                        {showPassword ? <EyeSlash size={12} /> : <Eye size={12} />}
-                        <span>{showPassword ? 'Hide' : 'Show'}</span>
-                      </button>
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      maxLength={16}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter 8–16 char password…"
-                      className={`w-full bg-paper-bg border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none transition ${
-                        password
-                          ? pwdRules.isValid
-                            ? 'border-emerald-500 focus:border-emerald-600'
-                            : 'border-amber-500 focus:border-amber-600'
-                          : 'border-paper-border focus:border-paper-ink'
-                      }`}
-                    />
-
-                    {/* Real-time Password Requirements Checklist */}
-                    <div className="mt-2 p-2 bg-paper-surface border border-paper-border rounded-sm grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[10px]">
-                      <div className={`flex items-center space-x-1 ${password ? (pwdRules.hasValidLength ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400') : 'text-paper-muted'}`}>
-                        {password && pwdRules.hasValidLength ? (
-                          <CheckCircle size={13} weight="fill" className="text-emerald-600 flex-shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-paper-border-dark flex-shrink-0" />
-                        )}
-                        <span>8–16 characters</span>
-                      </div>
-
-                      <div className={`flex items-center space-x-1 ${password ? (pwdRules.hasAlphanumeric ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400') : 'text-paper-muted'}`}>
-                        {password && pwdRules.hasAlphanumeric ? (
-                          <CheckCircle size={13} weight="fill" className="text-emerald-600 flex-shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-paper-border-dark flex-shrink-0" />
-                        )}
-                        <span>Letters & Numbers</span>
-                      </div>
-
-                      <div className={`flex items-center space-x-1 ${password ? (pwdRules.hasSpecial ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400') : 'text-paper-muted'}`}>
-                        {password && pwdRules.hasSpecial ? (
-                          <CheckCircle size={13} weight="fill" className="text-emerald-600 flex-shrink-0" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 rounded-full bg-paper-border-dark flex-shrink-0" />
-                        )}
-                        <span>≥ 1 Special char (!@#$…)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-editorial-rust font-heading w-full py-3 text-xs font-bold mt-2"
-                  >
-                    {loading ? (
-                      <ArrowsClockwise size={18} className="animate-spin" />
-                    ) : (
-                      <LockOpen size={18} weight="bold" />
-                    )}
-                    <span>
-                      {loading ? 'AUTHENTICATING & VERIFYING…' : `AUTHENTICATE AS ${role} & UNLOCK EVAULT`}
-                    </span>
-                  </button>
-                </form>
-              ) : (
-                /* Instant Wallet Signature Mode */
-                <div className="space-y-4 font-mono text-xs">
-                  <div className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-2">
-                    <div className="flex items-center space-x-2 text-paper-ink font-bold">
-                      <Key size={16} weight="bold" className="text-paper-rust" />
-                      <span>EIP-712 Cryptographic Signature Sign-In</span>
-                    </div>
-                    <p className="text-[11px] text-paper-muted font-body leading-relaxed">
-                      Prove ownership of wallet <code className="text-paper-ink">{walletAddress?.substring(0, 12)}…</code> by signing a cryptographic nonce with MetaMask. No password transmission required.
+                    <p className="text-xs text-paper-muted font-body leading-relaxed">
+                      Authenticate ownership of wallet <code className="text-paper-ink font-mono font-bold">{walletAddress?.substring(0, 10)}…{walletAddress?.substring(walletAddress.length - 6)}</code> by signing an EIP-712 cryptographic nonce with MetaMask.
                     </p>
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleWalletLogin}
+                      className="btn-editorial-rust font-heading w-full py-3 text-xs font-bold shadow-offset-sm"
+                    >
+                      {loading ? (
+                        <ArrowsClockwise size={18} className="animate-spin" />
+                      ) : (
+                        <LockOpen size={18} weight="bold" />
+                      )}
+                      <span>
+                        {loading ? 'AUTHENTICATING WITH METAMASK…' : 'SIGN IN WITH CONNECTED WALLET'}
+                      </span>
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={handleWalletSignatureLogin}
-                    className="btn-editorial-rust font-heading w-full py-3 text-xs font-bold"
-                  >
-                    {loading ? (
-                      <ArrowsClockwise size={18} className="animate-spin" />
-                    ) : (
-                      <Fingerprint size={18} weight="bold" />
-                    )}
-                    <span>
-                      {loading ? 'WAITING FOR METAMASK SIGNATURE…' : 'SIGN NONCE & UNLOCK EVAULT'}
+                  {/* Alternative: Credentials Log In */}
+                  <div className="border border-paper-border bg-paper-card p-4 rounded-sm space-y-3">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-muted block border-b border-paper-border pb-1.5">
+                      OR LOG IN WITH USER CREDENTIALS
                     </span>
-                  </button>
+                    <form onSubmit={handleCredentialsLogin} className="space-y-3 font-mono text-xs">
+                      <div>
+                        <label className="block text-[10px] text-paper-muted uppercase mb-1">
+                          REGISTERED EMAIL
+                        </label>
+                        <input
+                          type="email"
+                          value={loginEmail}
+                          onChange={(e) => setLoginEmail(e.target.value)}
+                          placeholder="name@evault.in…"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[10px] text-paper-muted uppercase">
+                            PASSWORD
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                            className="text-[10px] text-paper-muted hover:text-paper-ink flex items-center space-x-1"
+                          >
+                            {showLoginPassword ? <EyeSlash size={12} /> : <Eye size={12} />}
+                            <span>{showLoginPassword ? 'Hide' : 'Show'}</span>
+                          </button>
+                        </div>
+                        <input
+                          type={showLoginPassword ? 'text' : 'password'}
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="••••••••••••"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn-editorial font-mono w-full py-2.5 text-xs font-bold"
+                      >
+                        <SignIn size={16} weight="bold" />
+                        <span>LOG IN WITH CREDENTIALS</span>
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Switch to Register Banner */}
+                  <div className="pt-3 border-t border-paper-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-body bg-paper-surface/50 p-3 rounded-sm">
+                    <span className="text-paper-muted">
+                      Don't have an account?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('register');
+                        setError(null);
+                        setErrorType(null);
+                        setSuccessMsg(null);
+                      }}
+                      className="font-heading font-bold text-paper-rust hover:text-paper-rust-hover transition flex items-center space-x-1.5 underline underline-offset-2"
+                    >
+                      <UserPlus size={16} weight="bold" />
+                      <span>Please register here →</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ========================================================================= */
+                /* VIEW 2: REGISTER NEW ACCOUNT (1 Wallet = 1 Account) */
+                /* ========================================================================= */
+                <div className="space-y-4">
+                  <div className="bg-paper-surface border border-paper-border p-3 rounded-sm flex items-center space-x-2 text-xs text-paper-muted">
+                    <ShieldCheck size={16} weight="bold" className="text-paper-rust flex-shrink-0" />
+                    <span>
+                      Creating a new legal profile for wallet <strong className="text-paper-ink font-mono">{walletAddress?.substring(0, 8)}…</strong>. One account permitted per wallet.
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleRegister} className="space-y-3.5 font-mono text-xs">
+                    {/* Role Selector Grid */}
+                    <div>
+                      <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1.5">
+                        1. SELECT ACCOUNT ROLE *
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'LAWYER', label: 'Advocate', icon: <FileText size={15} weight="bold" />, desc: 'Lawyer / Counsel' },
+                          { id: 'JUDGE', label: 'Judicial Officer', icon: <Gavel size={15} weight="bold" />, desc: 'Judge / Bench' },
+                          { id: 'CITIZEN', label: 'Citizen', icon: <User size={15} weight="bold" />, desc: 'Petitioner / Client' },
+                          { id: 'POLICE', label: 'Police', icon: <ShieldCheck size={15} weight="bold" />, desc: 'Law Enforcement' },
+                        ].map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setRole(r.id)}
+                            className={`p-2 rounded-sm border text-left flex flex-col justify-between transition-all ${
+                              role === r.id
+                                ? 'border-paper-border-dark bg-paper-rust text-white shadow-offset-sm'
+                                : 'border-paper-border bg-paper-surface text-paper-ink hover:border-paper-ink'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              {r.icon}
+                              {role === r.id && <CheckCircle size={13} weight="fill" />}
+                            </div>
+                            <div className="mt-1.5">
+                              <span className="font-heading font-bold text-xs block leading-tight">{r.label}</span>
+                              <span className={`text-[9px] block ${role === r.id ? 'text-white/80' : 'text-paper-muted'}`}>{r.desc}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Profile Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
+                          FULL LEGAL NAME *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g. Adv. Ramesh Sharma…"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
+                          OFFICIAL EMAIL ADDRESS *
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="name@domain.in…"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Role Specific Fields */}
+                    {role === 'LAWYER' && (
+                      <div>
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
+                          STATE BAR COUNCIL ENROLLMENT NUMBER *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={barNumber}
+                          onChange={(e) => setBarNumber(e.target.value)}
+                          placeholder="e.g. MAH-10492-2020"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+                    )}
+
+                    {role === 'JUDGE' && (
+                      <div>
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
+                          COURT BENCH / JURISDICTION *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={courtName}
+                          onChange={(e) => setCourtName(e.target.value)}
+                          placeholder="e.g. High Court of Judicature at Bombay"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+                    )}
+
+                    {role === 'POLICE' && (
+                      <div>
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
+                          POLICE STATION / FORENSIC BADGE ID *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={policeId}
+                          onChange={(e) => setPoliceId(e.target.value)}
+                          placeholder="e.g. MH-POL-8492"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                        />
+                      </div>
+                    )}
+
+                    {/* Password Input with Strict Validation */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold">
+                          SECURITY PASSWORD * (8–16 CHARS, ALPHANUMERIC + SPECIAL CHAR)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-[10px] text-paper-muted hover:text-paper-ink flex items-center space-x-1"
+                        >
+                          {showPassword ? <EyeSlash size={12} /> : <Eye size={12} />}
+                          <span>{showPassword ? 'Hide' : 'Show'}</span>
+                        </button>
+                      </div>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        maxLength={16}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter 8–16 char password…"
+                        className={`w-full bg-paper-bg border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none transition ${
+                          password
+                            ? pwdRules.isValid
+                              ? 'border-emerald-500 focus:border-emerald-600'
+                              : 'border-amber-500 focus:border-amber-600'
+                            : 'border-paper-border focus:border-paper-ink'
+                        }`}
+                      />
+
+                      {/* Password Requirements Checklist */}
+                      <div className="mt-2 p-2 bg-paper-surface border border-paper-border rounded-sm grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[10px]">
+                        <div className={`flex items-center space-x-1 ${password ? (pwdRules.hasValidLength ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400') : 'text-paper-muted'}`}>
+                          {password && pwdRules.hasValidLength ? (
+                            <CheckCircle size={13} weight="fill" className="text-emerald-600 flex-shrink-0" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-paper-border-dark flex-shrink-0" />
+                          )}
+                          <span>8–16 chars</span>
+                        </div>
+
+                        <div className={`flex items-center space-x-1 ${password ? (pwdRules.hasAlphanumeric ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400') : 'text-paper-muted'}`}>
+                          {password && pwdRules.hasAlphanumeric ? (
+                            <CheckCircle size={13} weight="fill" className="text-emerald-600 flex-shrink-0" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-paper-border-dark flex-shrink-0" />
+                          )}
+                          <span>Letters & Numbers</span>
+                        </div>
+
+                        <div className={`flex items-center space-x-1 ${password ? (pwdRules.hasSpecial ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400') : 'text-paper-muted'}`}>
+                          {password && pwdRules.hasSpecial ? (
+                            <CheckCircle size={13} weight="fill" className="text-emerald-600 flex-shrink-0" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-paper-border-dark flex-shrink-0" />
+                          )}
+                          <span>≥ 1 Special char</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="btn-editorial-rust font-heading w-full py-3 text-xs font-bold mt-2"
+                    >
+                      {loading ? (
+                        <ArrowsClockwise size={18} className="animate-spin" />
+                      ) : (
+                        <ShieldCheck size={18} weight="bold" />
+                      )}
+                      <span>
+                        {loading ? 'REGISTERING & VERIFYING…' : `REGISTER AS ${role} & UNLOCK EVAULT`}
+                      </span>
+                    </button>
+                  </form>
+
+                  {/* Switch back to Login Banner */}
+                  <div className="pt-3 border-t border-paper-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-body bg-paper-surface/50 p-3 rounded-sm">
+                    <span className="text-paper-muted">
+                      Already have an account registered with this wallet?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setError(null);
+                        setErrorType(null);
+                        setSuccessMsg(null);
+                      }}
+                      className="font-heading font-bold text-paper-rust hover:text-paper-rust-hover transition flex items-center space-x-1.5 underline underline-offset-2"
+                    >
+                      <SignIn size={16} weight="bold" />
+                      <span>Log in here →</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -620,10 +760,42 @@ export function UserAuthGate({
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-red-500/10 border border-red-500/30 rounded-sm flex items-center space-x-2 text-red-600 text-xs font-mono"
+              className="p-3 bg-red-500/10 border border-red-500/30 rounded-sm space-y-2 text-red-600 text-xs font-mono"
             >
-              <Warning size={16} weight="bold" className="flex-shrink-0" />
-              <span>{error}</span>
+              <div className="flex items-center space-x-2">
+                <Warning size={16} weight="bold" className="flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+
+              {errorType === 'NOT_REGISTERED' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setError(null);
+                    setErrorType(null);
+                  }}
+                  className="bg-paper-card border border-red-500 text-red-700 dark:text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 text-[11px] font-bold rounded-sm transition flex items-center space-x-1 mt-1"
+                >
+                  <UserPlus size={13} weight="bold" />
+                  <span>REGISTER THIS WALLET NOW</span>
+                </button>
+              )}
+
+              {errorType === 'ALREADY_REGISTERED' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setError(null);
+                    setErrorType(null);
+                  }}
+                  className="bg-paper-card border border-red-500 text-red-700 dark:text-red-300 hover:bg-red-500 hover:text-white px-3 py-1 text-[11px] font-bold rounded-sm transition flex items-center space-x-1 mt-1"
+                >
+                  <SignIn size={13} weight="bold" />
+                  <span>GO TO LOGIN</span>
+                </button>
+              )}
             </motion.div>
           )}
 
