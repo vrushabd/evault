@@ -1,6 +1,6 @@
-# eVault
-
 <div align="center">
+  <img src="docs/evault_banner.jpg" alt="eVault" width="800"/>
+  <br/>
   <p><strong>A secure, blockchain-backed legal document vault for the storage, sharing, and integrity verification of case records.</strong></p>
 </div>
 
