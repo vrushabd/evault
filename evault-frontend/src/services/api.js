@@ -762,7 +762,16 @@ export const api = {
   },
 
   getAuditLogs: async () => {
-    // Primary: read from universal backend audit ledger (shared across all users)
+    let backendLogs = [];
+    let localLogs = [];
+
+    // 1. Read from localStorage (may have pre-existing logs from before universal ledger)
+    try {
+      const raw = localStorage.getItem('evault-live-audit-logs');
+      if (raw) localLogs = JSON.parse(raw);
+    } catch {}
+
+    // 2. Read from universal backend audit ledger
     try {
       let res;
       try {
@@ -771,23 +780,60 @@ export const api = {
         res = await axios.get('http://localhost:8086/audit/logs', { params: { limit: 100 }, timeout: 4000 });
       }
       if (res.data?.success && Array.isArray(res.data?.data)) {
-        // Sync backend logs into localStorage so they persist across page reloads
-        try {
-          localStorage.setItem('evault-live-audit-logs', JSON.stringify(res.data.data.slice(0, 100)));
-        } catch {}
-        return res.data.data;
+        backendLogs = res.data.data;
       }
     } catch {
-      /* backend unreachable — fall back to localStorage */
+      /* backend unreachable */
     }
 
-    // Fallback: localStorage cache
+    // 3. If localStorage has logs that the backend doesn't, migrate them up
+    if (localLogs.length > 0) {
+      const backendIds = new Set(backendLogs.map((l) => l.id));
+      const toMigrate = localLogs.filter((l) => l && l.id && !backendIds.has(l.id));
+      if (toMigrate.length > 0) {
+        for (const entry of toMigrate) {
+          try {
+            try {
+              await apiClient.post('/audit/log', entry, { timeout: 2000 });
+            } catch {
+              await axios.post('http://localhost:8086/audit/log', entry, { timeout: 2000 });
+            }
+          } catch {}
+        }
+        // Re-fetch after migration
+        try {
+          let res2;
+          try {
+            res2 = await apiClient.get('/audit/logs', { params: { limit: 100 }, timeout: 4000 });
+          } catch {
+            res2 = await axios.get('http://localhost:8086/audit/logs', { params: { limit: 100 }, timeout: 4000 });
+          }
+          if (res2.data?.success && Array.isArray(res2.data?.data)) {
+            backendLogs = res2.data.data;
+          }
+        } catch {}
+      }
+    }
+
+    // 4. Merge and deduplicate (backend is authoritative, local fills gaps)
+    const seen = new Set();
+    const merged = [];
+    for (const log of [...backendLogs, ...localLogs]) {
+      if (log && log.id && !seen.has(log.id)) {
+        seen.add(log.id);
+        merged.push(log);
+      }
+    }
+
+    // 5. Sort by timestamp descending
+    merged.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+    // 6. Sync merged result back to localStorage cache
     try {
-      const raw = localStorage.getItem('evault-live-audit-logs');
-      if (raw) return JSON.parse(raw);
+      localStorage.setItem('evault-live-audit-logs', JSON.stringify(merged.slice(0, 100)));
     } catch {}
 
-    return [];
+    return merged;
   },
 
 
