@@ -390,7 +390,9 @@ export const api = {
     const now = new Date();
     const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
     const id = `AUD-${Math.floor(10000 + Math.random() * 90000)}`;
-    const userLabel = userName ? `${userName} (${(role || 'USER').toUpperCase()})` : (performedBy || 'SYSTEM');
+    const userRole = (role || 'LAWYER').toUpperCase();
+    const resolvedName = userName || (performedBy ? `${performedBy.substring(0, 6)}…${performedBy.substring(performedBy.length - 4)}` : 'Authorized User');
+    const userLabel = `${resolvedName} (${userRole})`;
 
     let hash = txHash;
     if (!hash) {
@@ -404,6 +406,8 @@ export const api = {
       }
     }
 
+    const wallet = (performedBy || '0xVaultUser').substring(0, 42);
+
     const logEntry = {
       id,
       timestamp,
@@ -413,18 +417,21 @@ export const api = {
       blockNumber: '6482' + Math.floor(900 + Math.random() * 99),
       status: 'VERIFIED',
       user: userLabel,
-      details: details || `${action} executed by ${userLabel}`,
+      userName: resolvedName,
+      role: userRole,
+      performedBy: wallet,
+      details: details || `${action} initiated by ${resolvedName} (${userRole}) [Wallet: ${wallet}]`,
       docId: docId || null,
       caseId: caseId || null,
     };
 
-    // 1. Try sending to backend audit service via gateway
+    // 1. Send to backend audit service via gateway
     try {
       await apiClient.post('/audit/log', {
         docId: logEntry.docId,
         caseId: logEntry.caseId,
         action: logEntry.action,
-        performedBy: userLabel,
+        performedBy: wallet,
         txHash: logEntry.hash,
         details: logEntry.details,
       }, { timeout: 3000 });
@@ -459,6 +466,7 @@ export const api = {
           blockNumber: item.blockNumber || '6482914',
           status: 'VERIFIED',
           user: item.performedBy || 'System User',
+          performedBy: item.performedBy || 'System User',
           details: item.details || '',
           docId: item.docId,
           caseId: item.caseId,
