@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Scales, Wallet, Fingerprint, Moon, Sun, LockKey } from '@phosphor-icons/react';
+import { Scales, Wallet, Fingerprint, Moon, Sun, LockKey, SignOut } from '@phosphor-icons/react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 
-export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarStatus, onOpenIdentity }) {
+export function Navbar({ walletAddress, isConnected, onConnectWallet, onLogout, aadhaarStatus, onOpenIdentity }) {
   const { theme, toggleTheme } = useTheme();
   const [health, setHealth] = useState({ gateway: null, blockchain: null, audit: null });
 
@@ -49,7 +49,7 @@ export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarSta
           <button
             type="button"
             onClick={toggleTheme}
-            className="w-8 h-8 flex items-center justify-center rounded-sm border border-paper-border-dark bg-paper-card text-paper-ink shadow-offset-sm hover:-translate-y-px transition-all"
+            className="w-8 h-8 flex items-center justify-center rounded-sm border border-paper-border-dark bg-paper-card text-paper-ink shadow-offset-sm hover:-translate-y-px transition-all cursor-pointer"
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
@@ -97,6 +97,18 @@ export function Navbar({ walletAddress, isConnected, onConnectWallet, aadhaarSta
                 : 'Connect wallet'}
             </span>
           </button>
+
+          {isConnected && onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Lock system and log out"
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-sm border border-paper-border text-paper-muted hover:text-paper-rust hover:border-paper-rust bg-paper-card text-[11px] font-heading font-bold shadow-offset-sm transition-all hover:-translate-y-px cursor-pointer"
+            >
+              <SignOut size={15} weight="bold" />
+              <span className="hidden sm:inline">LOGOUT</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

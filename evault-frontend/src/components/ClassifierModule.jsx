@@ -27,6 +27,15 @@ export function ClassifierModule({ onSecureDocument }) {
       const response = await api.classifyText(inputText);
       if (response.success) {
         setResult(response.data);
+        const storedName = localStorage.getItem('evault-name') || 'Authorized User';
+        const storedRole = localStorage.getItem('evault-role') || 'LAWYER';
+        api.logAuditEvent({
+          action: 'DOCUMENT_CLASSIFIED',
+          service: 'Integration',
+          role: storedRole,
+          userName: storedName,
+          details: `AI Classified: ${response.data.documentType || 'Legal Document'} (Confidence: ${Math.round((response.data.confidence || 0.95) * 100)}%)`,
+        }).catch(console.warn);
       } else {
         setError(response.error || "Classification failed.");
       }
@@ -49,6 +58,15 @@ export function ClassifierModule({ onSecureDocument }) {
       const response = await api.classifyDocument(selectedFile);
       if (response.success) {
         setResult(response.data);
+        const storedName = localStorage.getItem('evault-name') || 'Authorized User';
+        const storedRole = localStorage.getItem('evault-role') || 'LAWYER';
+        api.logAuditEvent({
+          action: 'DOCUMENT_CLASSIFIED',
+          service: 'Integration',
+          role: storedRole,
+          userName: storedName,
+          details: `AI PDF Analyzed: ${selectedFile.name} -> ${response.data.documentType || 'Legal File'}`,
+        }).catch(console.warn);
       } else {
         setError(response.error || "Failed to analyze PDF.");
       }

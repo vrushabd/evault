@@ -123,13 +123,57 @@ export function App() {
     });
   };
 
-  // Completely clears eVault session & locks the system
-  const handleLogout = () => {
+  // Completely clears eVault session, cache, and locks the system
+  const handleLogout = async () => {
+    // 0. Log audit event before clearing user session
+    if (currentUser) {
+      api.logAuditEvent({
+        action: 'VAULT_SESSION_LOCKED',
+        service: 'Auth',
+        performedBy: currentUser.walletAddress || walletAddress || '0xDemoWallet',
+        role: currentUser.role || 'CLIENT',
+        userName: currentUser.name || 'Authorized User',
+        details: `User ${currentUser.name || 'Authorized User'} (${currentUser.role || 'CLIENT'}) signed out. Session locked.`,
+      }).catch(console.warn);
+    }
+
+    // 1. Clear session and user keys from localStorage
     localStorage.removeItem('evault-token');
     localStorage.removeItem('evault-wallet');
     localStorage.removeItem('evault-role');
     localStorage.removeItem('evault-name');
+    localStorage.removeItem('evault-email');
 
+    // 2. Clear entire sessionStorage
+    try {
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn('sessionStorage clear error:', e);
+    }
+
+    // 3. Purge browser CacheStorage API if available
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      try {
+        const cacheKeys = await window.caches.keys();
+        await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+      } catch (e) {
+        console.warn('CacheStorage clear error:', e);
+      }
+    }
+
+    // 4. Revoke connected permissions from MetaMask so wallet disconnects completely
+    if (typeof window !== 'undefined' && window.ethereum?.request) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_revokePermissions',
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (e) {
+        console.warn('MetaMask permission revoke note:', e);
+      }
+    }
+
+    // 5. Reset application memory state
     setWalletAddress('');
     setIsConnected(false);
     setCurrentUser(null);
@@ -137,7 +181,7 @@ export function App() {
     setAadhaarChecking(false);
     setFilingPrefill(null);
 
-    console.log('eVault session cleared. System locked.');
+    console.log('eVault session and browser cache cleared. System locked.');
   };
 
   const handleConnectWallet = async () => {
@@ -164,6 +208,17 @@ export function App() {
     setCurrentUser(userData);
     setIsConnected(true);
     setWalletAddress(userData.walletAddress);
+
+    // Record real-time audit ledger entry for vault access
+    api.logAuditEvent({
+      action: 'VAULT_ACCESS_GRANTED',
+      service: 'Auth',
+      performedBy: userData.walletAddress || '0xDemoWallet',
+      role: userData.role || 'CLIENT',
+      userName: userData.name || 'Authorized User',
+      details: `User ${userData.name || 'Authorized User'} (${userData.role || 'CLIENT'}) successfully authenticated with credentials and entered eVault. Bound Wallet: ${userData.walletAddress || '0xDemoWallet'}`,
+    }).catch(console.warn);
+
 
     const status = userData.walletAddress
       ? await checkWalletAadhaarBinding(userData.walletAddress)
@@ -267,6 +322,7 @@ export function App() {
         walletAddress={walletAddress}
         isConnected={isConnected && !isLocked}
         onConnectWallet={handleConnectWallet}
+        onLogout={handleLogout}
         aadhaarStatus={aadhaarStatus}
         onOpenIdentity={() => setActiveTab('aadhaar')}
       />

@@ -85,83 +85,8 @@ export function UserAuthGate({
   };
 
   // -------------------------------------------------------------
-  // LOG IN HANDLER (Wallet Signature & Credentials)
+  // LOG IN HANDLER (User Credentials Authentication)
   // -------------------------------------------------------------
-  const handleWalletLogin = async () => {
-    if (!window.ethereum || !walletAddress) {
-      setError('Please connect your MetaMask wallet first.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setErrorType(null);
-    setSuccessMsg('Requesting authentication challenge from Auth Service…');
-
-    try {
-      // Step 1: Request fresh nonce for this wallet
-      let nonce;
-      try {
-        nonce = await api.getNonce(walletAddress);
-      } catch (nonceErr) {
-        console.warn('Nonce fetch error:', nonceErr);
-        // If user is not found in database
-        setErrorType('NOT_REGISTERED');
-        throw new Error(
-          'No registered account found for this Ethereum wallet. Please register your account first.'
-        );
-      }
-
-      setSuccessMsg('Please sign the authentication nonce in MetaMask…');
-
-      // Step 2: Request MetaMask signature
-      const signature = await window.ethereum.request({
-        method: 'personal_sign',
-        params: [nonce, walletAddress],
-      });
-
-      // Step 3: Validate signature with backend
-      const loginResult = await api.walletLogin(walletAddress, nonce, signature);
-
-      if (!loginResult || !loginResult.token) {
-        throw new Error('Authentication failed: No valid session token returned.');
-      }
-
-      // Step 4: Save session & apply role
-      localStorage.setItem('evault-token', loginResult.token);
-      localStorage.setItem('evault-wallet', walletAddress);
-      const userRole = loginResult.role || 'CLIENT';
-      localStorage.setItem('evault-role', userRole);
-
-      setSuccessMsg('Authentication successful! Unlocking eVault…');
-
-      setTimeout(() => {
-        onAuthenticateSuccess({
-          walletAddress,
-          role: userRole,
-          name: `${walletAddress.substring(0, 10)}…`,
-          token: loginResult.token,
-        });
-      }, 700);
-
-    } catch (err) {
-      console.error('Wallet Login Error:', err);
-      if (err.code === 4001) {
-        setError('MetaMask signature request was rejected.');
-      } else {
-        const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Log in failed.';
-        if (errorMsg.toLowerCase().includes('not found') || errorMsg.toLowerCase().includes('user not found')) {
-          setErrorType('NOT_REGISTERED');
-          setError('No registered account found for this Ethereum wallet. Please register below.');
-        } else {
-          setError(errorMsg);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCredentialsLogin = async (e) => {
     e.preventDefault();
     if (!loginEmail.trim() || !loginPassword.trim()) {
@@ -175,27 +100,71 @@ export function UserAuthGate({
     setSuccessMsg('Verifying credentials…');
 
     try {
-      // Demo login helper / credentials check
-      const res = await api.login({ email: loginEmail, password: loginPassword });
-      if (res && res.success) {
-        const user = res.data.user;
-        localStorage.setItem('evault-wallet', walletAddress || '0xDemoWallet');
-        localStorage.setItem('evault-role', user.role || 'LAWYER');
-        localStorage.setItem('evault-name', user.name);
+      // Step 1: Check registered accounts registry
+      const storedAccountsStr = localStorage.getItem('evault-registered-accounts');
+      const accounts = storedAccountsStr ? JSON.parse(storedAccountsStr) : [];
+      
+      const foundAccount = accounts.find(
+        (acc) => acc.email?.toLowerCase() === loginEmail.trim().toLowerCase()
+      );
 
-        setSuccessMsg('Credentials verified! Unlocking eVault…');
-        setTimeout(() => {
-          onAuthenticateSuccess({
-            walletAddress: walletAddress || '0xDemoWallet',
-            role: user.role || 'LAWYER',
-            name: user.name,
-            email: user.email,
-          });
-        }, 700);
+      let user = null;
+      let token = null;
+
+      if (foundAccount) {
+        if (foundAccount.password && foundAccount.password !== loginPassword) {
+          throw new Error('Invalid email or password.');
+        }
+        user = {
+          walletAddress: walletAddress || foundAccount.walletAddress || '0xDemoWallet',
+          name: foundAccount.name,
+          email: foundAccount.email,
+          role: foundAccount.role || 'LAWYER',
+          barNumber: foundAccount.barNumber || null,
+          courtName: foundAccount.courtName || null,
+          policeId: foundAccount.policeId || null,
+        };
+        token = foundAccount.token || `evault-jwt-session-${Date.now()}`;
       } else {
-        throw new Error(res.error || 'Invalid email or password.');
+        // Step 2: Fallback to API login / demo verification
+        const res = await api.login({ email: loginEmail, password: loginPassword });
+        if (res && res.success) {
+          user = {
+            walletAddress: walletAddress || '0xDemoWallet',
+            name: res.data.user.name,
+            email: res.data.user.email,
+            role: res.data.user.role || 'LAWYER',
+            barNumber: res.data.user.barNumber || null,
+            courtName: res.data.user.courtName || null,
+          };
+          token = res.data.token || `evault-jwt-session-${Date.now()}`;
+        } else {
+          throw new Error(res?.error || 'Invalid email or password.');
+        }
       }
+
+      // Step 3: Save authenticated session
+      localStorage.setItem('evault-token', token);
+      localStorage.setItem('evault-wallet', walletAddress || user.walletAddress || '0xDemoWallet');
+      localStorage.setItem('evault-role', user.role || 'LAWYER');
+      localStorage.setItem('evault-name', user.name);
+      if (user.email) localStorage.setItem('evault-email', user.email);
+
+      setSuccessMsg('Credentials verified! Unlocking eVault…');
+      setTimeout(() => {
+        onAuthenticateSuccess({
+          walletAddress: walletAddress || user.walletAddress || '0xDemoWallet',
+          role: user.role || 'LAWYER',
+          name: user.name,
+          email: user.email,
+          barNumber: user.barNumber,
+          courtName: user.courtName,
+          token,
+        });
+      }, 700);
+
     } catch (err) {
+      console.error('Credentials Login Error:', err);
       setError(err.message || 'Failed to authenticate with credentials.');
     } finally {
       setLoading(false);
@@ -257,7 +226,7 @@ export function UserAuthGate({
     setSuccessMsg('Registering your legal profile for this Ethereum wallet…');
 
     try {
-      // Step 1: Register wallet with Auth Service (Enforces 1 wallet = 1 account)
+      // Step 1: Register wallet with Auth Service if available
       try {
         await api.registerWallet({
           walletAddress: walletAddress || '0xDemoWallet0000000000000000000000000000',
@@ -271,39 +240,49 @@ export function UserAuthGate({
         const regMsg = regErr.response?.data?.message || regErr.response?.data?.error || regErr.message || '';
         if (regMsg.toLowerCase().includes('already exists') || regMsg.toLowerCase().includes('duplicate')) {
           setErrorType('ALREADY_REGISTERED');
-          throw new Error('This Ethereum wallet is already registered to an existing account. Please log in instead.');
+          throw new Error('This Ethereum wallet or email is already registered to an existing account. Please log in instead.');
         }
-        console.warn('Registration note (continuing signature flow):', regMsg);
+        console.warn('Backend registration note:', regMsg);
       }
 
-      // Step 2: Complete signature authentication
-      let token = null;
-      if (window.ethereum && walletAddress) {
-        try {
-          const nonce = await api.getNonce(walletAddress).catch(() => 'eVault-Auth-Nonce-' + Date.now());
-          const signature = await window.ethereum.request({
-            method: 'personal_sign',
-            params: [nonce, walletAddress],
-          });
-          const loginResult = await api.walletLogin(walletAddress, nonce, signature).catch(() => null);
-          if (loginResult?.token) {
-            token = loginResult.token;
-          }
-        } catch (sigErr) {
-          console.warn('Signature note:', sigErr.message);
-        }
-      }
+      // Step 2: Save to registered accounts registry
+      const storedAccountsStr = localStorage.getItem('evault-registered-accounts');
+      const accounts = storedAccountsStr ? JSON.parse(storedAccountsStr) : [];
+      
+      const token = 'evault-jwt-session-' + Date.now();
+      const newAccount = {
+        walletAddress: walletAddress || '0xDemoWallet',
+        name: name.trim(),
+        email: email.trim(),
+        password: password,
+        role,
+        barNumber: role === 'LAWYER' ? barNumber.trim() : null,
+        courtName: role === 'JUDGE' ? courtName.trim() : null,
+        policeId: role === 'POLICE' ? policeId.trim() : null,
+        token,
+        registeredAt: new Date().toISOString(),
+      };
 
-      if (!token) {
-        token = 'evault-jwt-session-' + Date.now();
-      }
+      const updatedAccounts = accounts.filter(
+        (a) => a.email?.toLowerCase() !== email.trim().toLowerCase() && a.walletAddress?.toLowerCase() !== (walletAddress || '').toLowerCase()
+      );
+      updatedAccounts.push(newAccount);
+      localStorage.setItem('evault-registered-accounts', JSON.stringify(updatedAccounts));
 
       localStorage.setItem('evault-token', token);
       localStorage.setItem('evault-wallet', walletAddress || '0xDemoWallet');
       localStorage.setItem('evault-role', role);
       localStorage.setItem('evault-name', name.trim());
-
       setSuccessMsg('Account registered successfully! Unlocking your legal workspace…');
+
+      api.logAuditEvent({
+        action: 'USER_REGISTERED',
+        service: 'Auth',
+        performedBy: walletAddress || '0xDemoWallet',
+        role,
+        userName: name.trim(),
+        details: `New ${role} profile registered for ${name.trim()} (${email.trim()}). Bound Wallet: ${walletAddress || '0xDemoWallet'}`,
+      }).catch(console.warn);
 
       setTimeout(() => {
         onAuthenticateSuccess({
@@ -407,7 +386,7 @@ export function UserAuthGate({
                   Connect MetaMask Wallet
                 </h3>
                 <p className="text-xs text-paper-muted max-w-md mx-auto">
-                  To enter the eVault system, please connect your Ethereum wallet. You will then be able to log in or register a new legal account.
+                  To enter the eVault system, please connect your Ethereum wallet. You will then be able to log in with your credentials or register a new legal account.
                 </p>
               </div>
               <button
@@ -422,59 +401,40 @@ export function UserAuthGate({
           ) : (
             <div>
               {/* ========================================================================= */}
-              {/* VIEW 1: LOG IN (DEFAULT) */}
+              {/* VIEW 1: LOG IN WITH USER CREDENTIALS (SOLE LOGIN METHOD) */}
               {/* ========================================================================= */}
               {authMode === 'login' ? (
-                <div className="space-y-5">
-                  <div className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-3">
-                    <div className="flex items-center space-x-2 text-paper-ink font-heading font-bold text-sm">
-                      <Fingerprint size={18} weight="bold" className="text-paper-rust" />
-                      <span>Web3 Cryptographic Signature Log In</span>
+                <div className="space-y-4">
+                  <div className="border border-paper-border bg-paper-card p-5 rounded-sm space-y-4">
+                    <div className="space-y-1 border-b border-paper-border pb-3">
+                      <div className="flex items-center space-x-2 text-paper-ink font-heading font-bold text-sm">
+                        <Key size={18} weight="bold" className="text-paper-rust" />
+                        <span>User Credentials Authentication</span>
+                      </div>
+                      <p className="text-xs text-paper-muted font-body leading-relaxed">
+                        Enter your registered email and password to authenticate access for connected wallet <code className="text-paper-ink font-mono font-bold">{walletAddress ? `${walletAddress.substring(0, 8)}…${walletAddress.substring(walletAddress.length - 6)}` : 'wallet'}</code>.
+                      </p>
                     </div>
-                    <p className="text-xs text-paper-muted font-body leading-relaxed">
-                      Authenticate ownership of wallet <code className="text-paper-ink font-mono font-bold">{walletAddress?.substring(0, 10)}…{walletAddress?.substring(walletAddress.length - 6)}</code> by signing an EIP-712 cryptographic nonce with MetaMask.
-                    </p>
 
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleWalletLogin}
-                      className="btn-editorial-rust font-heading w-full py-3 text-xs font-bold shadow-offset-sm"
-                    >
-                      {loading ? (
-                        <ArrowsClockwise size={18} className="animate-spin" />
-                      ) : (
-                        <LockOpen size={18} weight="bold" />
-                      )}
-                      <span>
-                        {loading ? 'AUTHENTICATING WITH METAMASK…' : 'SIGN IN WITH CONNECTED WALLET'}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Alternative: Credentials Log In */}
-                  <div className="border border-paper-border bg-paper-card p-4 rounded-sm space-y-3">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-muted block border-b border-paper-border pb-1.5">
-                      OR LOG IN WITH USER CREDENTIALS
-                    </span>
-                    <form onSubmit={handleCredentialsLogin} className="space-y-3 font-mono text-xs">
+                    <form onSubmit={handleCredentialsLogin} className="space-y-3.5 font-mono text-xs">
                       <div>
-                        <label className="block text-[10px] text-paper-muted uppercase mb-1">
-                          REGISTERED EMAIL
+                        <label className="block text-[10px] text-paper-muted uppercase font-bold mb-1">
+                          REGISTERED EMAIL *
                         </label>
                         <input
                           type="email"
+                          required
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
                           placeholder="name@evault.in…"
-                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink transition"
                         />
                       </div>
 
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="block text-[10px] text-paper-muted uppercase">
-                            PASSWORD
+                          <label className="block text-[10px] text-paper-muted uppercase font-bold">
+                            PASSWORD *
                           </label>
                           <button
                             type="button"
@@ -487,26 +447,33 @@ export function UserAuthGate({
                         </div>
                         <input
                           type={showLoginPassword ? 'text' : 'password'}
+                          required
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
                           placeholder="••••••••••••"
-                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink"
+                          className="w-full bg-paper-bg border border-paper-border rounded-sm p-2.5 text-xs text-paper-ink focus:outline-none focus:border-paper-ink transition"
                         />
                       </div>
 
                       <button
                         type="submit"
                         disabled={loading}
-                        className="btn-editorial font-mono w-full py-2.5 text-xs font-bold"
+                        className="btn-editorial-rust font-heading w-full py-3 text-xs font-bold shadow-offset-sm flex items-center justify-center space-x-2 mt-2"
                       >
-                        <SignIn size={16} weight="bold" />
-                        <span>LOG IN WITH CREDENTIALS</span>
+                        {loading ? (
+                          <ArrowsClockwise size={18} className="animate-spin" />
+                        ) : (
+                          <SignIn size={18} weight="bold" />
+                        )}
+                        <span>
+                          {loading ? 'VERIFYING CREDENTIALS…' : 'LOG IN WITH CREDENTIALS'}
+                        </span>
                       </button>
                     </form>
                   </div>
 
                   {/* Switch to Register Banner */}
-                  <div className="pt-3 border-t border-paper-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-body bg-paper-surface/50 p-3 rounded-sm">
+                  <div className="pt-3 border-t border-paper-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-body bg-paper-surface/50 p-3.5 rounded-sm">
                     <span className="text-paper-muted">
                       Don't have an account?
                     </span>

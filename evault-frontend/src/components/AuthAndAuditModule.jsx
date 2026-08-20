@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Fingerprint,
@@ -13,84 +13,33 @@ import {
   ListNumbers,
   Database
 } from '@phosphor-icons/react';
-
-// Live ledger entries with comprehensive cryptographic metadata
-const AUDIT_LOGS = [
-  {
-    id: 'AUD-88101',
-    timestamp: '2026-08-19 17:22:10',
-    action: 'DOCUMENT_CLASSIFIED',
-    service: 'Integration',
-    hash: '0x8f2d1a9e4c7b2e901f6a88d3c1b5e0472a9d6f81c3e7b4a0123456789abcdef0',
-    blockNumber: '6482914',
-    status: 'VERIFIED',
-    user: 'Adv. Ramesh Sharma (LAWYER)',
-    details: 'AI classification completed: Bail Application (Confidence 98.4%)',
-  },
-  {
-    id: 'AUD-88102',
-    timestamp: '2026-08-19 17:18:40',
-    action: 'AADHAAR_HASH_BOUND',
-    service: 'Integration',
-    hash: '0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    blockNumber: '6482901',
-    status: 'VERIFIED',
-    user: 'Priya Verma (CITIZEN)',
-    details: 'Cryptographic identity binding with SHA-256 Aadhaar commitment',
-  },
-  {
-    id: 'AUD-88103',
-    timestamp: '2026-08-19 17:12:15',
-    action: 'ECOURTS_CASE_FETCH',
-    service: 'Integration',
-    hash: '0x3a19d4c18e2f7b6a9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789',
-    blockNumber: '6482885',
-    status: 'VERIFIED',
-    user: 'Hon. Justice S. Mehta (JUDGE)',
-    details: 'Registry query synced with CNR DLHC010049212023',
-  },
-  {
-    id: 'AUD-88104',
-    timestamp: '2026-08-19 17:05:02',
-    action: 'JWT_AUTH_LOGIN',
-    service: 'Auth',
-    hash: '0x7c9209ef1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5',
-    blockNumber: '6482860',
-    status: 'VERIFIED',
-    user: 'Adv. Ramesh Sharma (LAWYER)',
-    details: 'EIP-712 cryptographic signature verified on-chain',
-  },
-  {
-    id: 'AUD-88105',
-    timestamp: '2026-08-19 16:50:33',
-    action: 'DOCUMENT_ENCRYPTED_PINATA',
-    service: 'Document',
-    hash: '0x99a8b7c6d5e4f3a2b10112233445566778899aabbccddeeff001122334455667',
-    blockNumber: '6482821',
-    status: 'VERIFIED',
-    user: 'Adv. Ramesh Sharma (LAWYER)',
-    details: 'AES-256-GCM ciphertext pinned to IPFS cluster with hash integrity anchor',
-  },
-  {
-    id: 'AUD-88106',
-    timestamp: '2026-08-19 16:42:19',
-    action: 'BLOCKCHAIN_EVENT_NOTIFY',
-    service: 'Notification',
-    hash: '0x445566778899aabbccddeeff00112233445566778899aabbccddeeff00112233',
-    blockNumber: '6482790',
-    status: 'VERIFIED',
-    user: 'SYSTEM (AUTOMATED)',
-    details: 'Case hearing alert dispatched to registered lawyer email & notification queue',
-  },
-];
+import api from '../services/api';
 
 export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
-  const [auditLogs] = useState(AUDIT_LOGS);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
   const [selectedService, setSelectedService] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [verifyHashInput, setVerifyHashInput] = useState('');
   const [hashVerifyResult, setHashVerifyResult] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  const fetchLogs = async () => {
+    try {
+      const logs = await api.getAuditLogs();
+      setAuditLogs(logs);
+    } catch (err) {
+      console.warn('Could not fetch audit logs:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleVerifyHash = () => {
     if (!verifyHashInput.trim()) return;
@@ -100,10 +49,10 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
     setTimeout(() => {
       const matchedLog = auditLogs.find(
         (l) =>
-          l.hash.toLowerCase() === q ||
-          l.hash.toLowerCase().includes(q) ||
-          l.id.toLowerCase() === q ||
-          l.id.toLowerCase().includes(q)
+          l.hash?.toLowerCase() === q ||
+          l.hash?.toLowerCase().includes(q) ||
+          l.id?.toLowerCase() === q ||
+          l.id?.toLowerCase().includes(q)
       );
 
       if (matchedLog) {
@@ -124,15 +73,15 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
   };
 
   const filteredLogs = auditLogs.filter((log) => {
-    const matchesService = selectedService === 'ALL' || log.service.toUpperCase() === selectedService.toUpperCase();
+    const matchesService = selectedService === 'ALL' || (log.service || '').toUpperCase() === selectedService.toUpperCase();
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !q ||
-      log.id.toLowerCase().includes(q) ||
-      log.action.toLowerCase().includes(q) ||
-      log.hash.toLowerCase().includes(q) ||
-      log.user.toLowerCase().includes(q) ||
-      log.details.toLowerCase().includes(q);
+      (log.id && log.id.toLowerCase().includes(q)) ||
+      (log.action && log.action.toLowerCase().includes(q)) ||
+      (log.hash && log.hash.toLowerCase().includes(q)) ||
+      (log.user && log.user.toLowerCase().includes(q)) ||
+      (log.details && log.details.toLowerCase().includes(q));
     return matchesService && matchesSearch;
   });
 
@@ -145,6 +94,7 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
     downloadAnchor.click();
     downloadAnchor.remove();
   };
+
 
   return (
     <div className="space-y-6">
@@ -180,21 +130,13 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
             </button>
 
             {currentUser && (
-              <div className="flex items-center space-x-3 bg-paper-surface border border-paper-ink px-4 py-2 rounded-sm font-mono text-xs shadow-offset-sm">
+              <div className="flex items-center space-x-2 bg-paper-surface border border-paper-border px-3.5 py-1.5 rounded-sm font-mono text-xs shadow-offset-sm">
                 <div>
                   <span className="text-paper-rust font-bold">{currentUser.name || 'AUTHENTICATED USER'}</span>
                   <span className="text-[10px] text-paper-muted block font-sans uppercase font-bold">
                     {currentUser.role || 'CLIENT'}
                   </span>
                 </div>
-                {onLogout && (
-                  <button
-                    onClick={onLogout}
-                    className="bg-paper-card border border-paper-ink text-paper-ink hover:bg-paper-rust hover:text-white px-2.5 py-1 text-[11px] font-bold transition rounded-sm"
-                  >
-                    LOGOUT
-                  </button>
-                )}
               </div>
             )}
           </div>

@@ -149,6 +149,20 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
       if (res.success) {
         setBindResult(res.data);
         setVerifyResult({ wallet: walletAddress, isBound: true, boundAt: res.data.boundAt });
+        
+        // Log real audit event
+        const storedName = localStorage.getItem('evault-name') || (walletAddress ? `${walletAddress.substring(0, 8)}…` : 'Citizen');
+        const storedRole = localStorage.getItem('evault-role') || 'CLIENT';
+        api.logAuditEvent({
+          action: 'AADHAAR_KYC_BOUND',
+          service: 'Integration',
+          performedBy: walletAddress,
+          role: storedRole,
+          userName: storedName,
+          details: `Aadhaar identity commitment verified (Verhoeff checksum passed) and bound to wallet ${walletAddress}.`,
+          txHash: res.data.commitment || res.data.aadhaarHash,
+        }).catch(console.warn);
+
         if (onBindingSuccess) onBindingSuccess(res.data);
         setAadhaarInput('');
       } else {
