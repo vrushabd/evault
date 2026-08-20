@@ -179,8 +179,8 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
   const stepIndex = UPLOAD_STEPS.findIndex((s) => s.id === uploadStep);
 
   return (
-    <div className="space-y-5">
-      <div className="bg-paper-card border border-paper-border p-5 rounded-lg">
+    <div className="space-y-8">
+      <div className="bg-paper-card border border-paper-border p-8 rounded-xl shadow-sm">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-paper-border bg-paper-surface">
             <FileText size={19} weight="bold" className="text-paper-rust" />
@@ -203,15 +203,12 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 bg-paper-card border border-paper-border p-5 space-y-4 rounded-lg">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 bg-paper-card border border-paper-border p-8 space-y-8 rounded-xl shadow-sm">
           <div className="pb-1">
             <h3 className="font-heading text-base font-bold text-paper-ink">
               Secure document filing
             </h3>
-            <p className="text-xs text-paper-muted font-body mt-1">
-              Encrypt your PDF, pin ciphertext to IPFS, and register metadata on Sepolia.
-            </p>
           </div>
 
           <form onSubmit={handleUploadAndEncrypt} className="space-y-4 font-body text-xs">
@@ -260,7 +257,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
               </div>
             </div>
 
-            <div className="border border-dashed border-paper-border hover:border-paper-ink p-8 text-center bg-paper-bg transition cursor-pointer relative rounded-sm">
+            <div className="border-2 border-dashed border-paper-border hover:border-paper-ink p-12 text-center bg-paper-bg transition cursor-pointer relative rounded-lg">
               <input
                 type="file"
                 accept=".pdf"
@@ -271,11 +268,11 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
               <p className="font-heading text-sm font-bold text-paper-ink">
                 {selectedFile ? selectedFile.name : 'Select PDF for secure archival'}
               </p>
-              <p className="text-[11px] text-paper-muted mt-1">
-                {selectedFile
-                  ? `${(selectedFile.size / 1024).toFixed(1)} KB`
-                  : 'Server-side AES-256-GCM → IPFS ciphertext → Sepolia metadata'}
-              </p>
+              {selectedFile && (
+                <p className="text-[11px] text-paper-muted mt-1">
+                  {`${(selectedFile.size / 1024).toFixed(1)} KB`}
+                </p>
+              )}
             </div>
 
             <button
@@ -419,15 +416,12 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
           )}
         </div>
 
-        <div className="lg:col-span-5 space-y-4">
-          <div id="grant-access-panel" className="bg-paper-card border border-paper-border p-6 shadow-offset-sm space-y-3 rounded-sm">
+        <div className="lg:col-span-5 space-y-8">
+          <div id="grant-access-panel" className="bg-paper-card border border-paper-border p-8 shadow-sm space-y-6 rounded-xl">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
               <ShareNetwork size={18} weight="bold" className="text-paper-rust" />
               <span>Grant document access</span>
             </h3>
-            <p className="text-[11px] text-paper-muted font-body leading-relaxed">
-              Access is enforced by the server. Encryption keys remain protected and are never exposed to users.
-            </p>
             <form onSubmit={handleShareDoc} className="space-y-3 text-xs">
               <div>
                 <label className="block text-[10px] text-paper-muted uppercase mb-1 tracking-wide">
@@ -451,13 +445,6 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
                 <span>Access granted to {shareWallet.substring(0, 10)}…</span>
               </div>
             )}
-          </div>
-
-          <div className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-2 font-body text-xs text-paper-muted">
-            <h4 className="font-heading font-bold text-paper-ink uppercase text-[11px]">Document service pipeline</h4>
-            <p>1. PDF encrypted server-side with AES-256-GCM before IPFS storage.</p>
-            <p>2. Encrypted payload pinned to IPFS via Pinata (CID = ciphertext).</p>
-            <p>3. Non-sensitive metadata (CID, hash, type) registered on Sepolia.</p>
           </div>
         </div>
       </div>

@@ -276,9 +276,9 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header Banner */}
-      <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm">
+      <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 bg-paper-surface border border-paper-ink rounded-sm">
             <Fingerprint size={22} weight="bold" className="text-paper-rust" />
@@ -289,23 +289,19 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
                 Privacy-Preserving Identity Binding
               </span>
               <span className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[9px] font-mono px-1.5 py-0.2 rounded-sm font-bold uppercase">
-                Verhoeff Mathematical Checksum Validated
+                Verhoeff Verified
               </span>
             </div>
             <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">
-              Built-In Aadhaar e-KYC Identity Commitment
+              Aadhaar e-KYC Identity
             </h2>
-            <p className="text-xs text-paper-muted font-body mt-1 max-w-2xl">
-              Authenticates citizen identity using UIDAI's mathematical Verhoeff checksum algorithm.
-              Raw Aadhaar numbers are never stored; only an irreversible HMAC-SHA256 commitment is anchored to your Web3 wallet address.
-            </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs">
         {/* Left Column: e-KYC Form */}
-        <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm space-y-5 rounded-sm">
+        <div className="bg-paper-card border border-paper-border p-8 shadow-sm space-y-6 rounded-xl">
           <div className="flex items-center justify-between border-b border-paper-border pb-3">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2">
               <Fingerprint size={16} weight="bold" className="text-paper-rust" />
@@ -386,7 +382,7 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
                 {aadhaarValidation.state === 'valid' && (
                   <div className="mt-1.5 flex items-center space-x-1.5 text-[11px] text-emerald-600 font-medium">
                     <CheckCircle size={14} weight="fill" />
-                    <span>Valid Aadhaar format (Verhoeff checksum passed)</span>
+                    <span>Valid Aadhaar</span>
                   </div>
                 )}
                 {aadhaarValidation.state === 'invalid' && (
@@ -574,7 +570,7 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
 
         {/* Right Column: Status & Integrity Inspection */}
         <div className="space-y-4">
-          <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm space-y-4">
+          <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
               <Lock size={16} weight="bold" className="text-paper-rust" />
               <span>Check On-Chain Identity Binding</span>
@@ -598,7 +594,7 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
             </div>
 
             {verifyResult && (
-              <div className="bg-paper-surface border border-paper-border p-3.5 rounded-sm space-y-2 text-xs">
+              <div className="bg-paper-surface border border-paper-border p-5 rounded-xl space-y-3 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-paper-muted">Identity Status</span>
                   <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold font-mono ${
@@ -632,14 +628,7 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
             )}
           </div>
 
-          <div className="bg-paper-surface border border-paper-border p-4 rounded-sm space-y-2">
-            <h4 className="font-heading text-xs font-bold text-paper-ink uppercase">How Verhoeff e-KYC Verification Works</h4>
-            <ul className="text-xs text-paper-muted space-y-1.5 list-disc list-inside font-body">
-              <li><strong className="text-paper-ink">Verhoeff Dihedral Checksum:</strong> Verifies the 12th mathematical check digit computed across the base-10 dihedral group $D_5$, detecting 100% of single-digit errors and over 95% of transposition errors.</li>
-              <li><strong className="text-paper-ink">UIDAI Rule Enforcement:</strong> Rejects numbers starting with 0 or 1 and repeated sequence patterns.</li>
-              <li><strong className="text-paper-ink">Zero PII Storage:</strong> Converts the valid Aadhaar into an irreversible HMAC-SHA256 commitment hash bound to your Ethereum wallet address.</li>
-            </ul>
-          </div>
+
         </div>
       </div>
     </div>

@@ -221,24 +221,25 @@ export function ClientDashboard({ walletAddress, currentUser }) {
   };
 
   return (
-    <div className="space-y-6 text-xs font-body">
+    <div className="space-y-8 text-xs font-body">
       
       {/* 1. Client Header Banner */}
-      <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm">
+      <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <div className="p-3 bg-paper-surface border border-paper-ink rounded-sm">
               <User size={24} weight="bold" className="text-paper-rust" />
             </div>
             <div>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">
-                CITIZEN / CLIENT PORTAL · 3 AUTHORIZED SERVICES (UPLOAD ONLY)
-              </span>
-              <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">
+              <h2 className="font-heading text-base font-bold text-paper-ink">
                 {clientName} — Personal Legal Vault
               </h2>
               <p className="text-xs text-paper-muted font-body mt-0.5">
-                Bound Identity: <strong className="text-paper-ink font-mono">{boundWallet}</strong> · Role: <strong className="text-paper-rust font-mono">CLIENT</strong>
+                <strong className="text-paper-ink font-mono" title={boundWallet}>
+                  {boundWallet ? `${boundWallet.substring(0, 6)}...${boundWallet.substring(boundWallet.length - 4)}` : 'UNKNOWN'}
+                </strong>
+                {' · '}
+                <strong className="text-paper-rust font-mono">{currentUser?.role?.toUpperCase() || 'CLIENT'}</strong>
               </p>
             </div>
           </div>
@@ -291,17 +292,14 @@ export function ClientDashboard({ walletAddress, currentUser }) {
       {/* FUNCTIONALITY 1: MY VAULT (View & Verify Personal Legal Documents - NO DOWNLOAD) */}
       {/* ========================================================================= */}
       {activeView === 'vault' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Documents List */}
-          <div className="lg:col-span-7 bg-paper-card border border-paper-border p-6 shadow-offset-sm space-y-4 rounded-sm">
+          <div className="lg:col-span-7 bg-paper-card border border-paper-border p-8 shadow-sm space-y-6 rounded-xl">
             <div className="flex items-center justify-between border-b border-paper-border pb-3">
               <div>
                 <h3 className="font-heading text-sm font-bold text-paper-ink uppercase">
                   My Secured Documents
                 </h3>
-                <p className="text-[11px] text-paper-muted">
-                  Client documents archived with AES-256-GCM encryption & IPFS pinning.
-                </p>
               </div>
               <button
                 type="button"
@@ -318,7 +316,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
             )}
 
             {!loadingDocs && vaultDocs.length === 0 && (
-              <div className="text-center py-8 bg-paper-surface border border-dashed border-paper-border rounded-sm space-y-2">
+              <div className="text-center py-12 bg-paper-surface border border-dashed border-paper-border rounded-xl space-y-4">
                 <HardDrives size={28} className="text-paper-muted mx-auto" />
                 <p className="font-heading font-bold text-paper-ink">Your Legal Vault is Empty</p>
                 <p className="text-[11px] text-paper-muted">
@@ -327,7 +325,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
                 <button
                   type="button"
                   onClick={() => setActiveView('upload')}
-                  className="btn-editorial-rust font-mono text-xs mt-2"
+                  className="btn-editorial-rust font-mono text-xs mt-4 mx-auto w-fit inline-flex"
                 >
                   UPLOAD FIRST DOCUMENT →
                 </button>
@@ -342,9 +340,9 @@ export function ClientDashboard({ walletAddress, currentUser }) {
                 return (
                   <StaggerItem key={id}>
                     <div
-                      className={`w-full text-left bg-paper-surface border p-4 rounded-sm space-y-3 transition ${
+                      className={`w-full text-left bg-paper-surface border p-6 rounded-xl space-y-4 transition ${
                         selected
-                          ? 'border-paper-ink shadow-offset-sm'
+                          ? 'border-paper-ink shadow-sm'
                           : 'border-paper-border hover:border-paper-ink'
                       }`}
                     >
@@ -394,8 +392,8 @@ export function ClientDashboard({ walletAddress, currentUser }) {
           </div>
 
           {/* Right Column: Integrity & Cryptographic Proof */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm space-y-4">
+          <div className="lg:col-span-5 space-y-8">
+            <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
               <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
                 <QrCode size={18} weight="bold" className="text-paper-rust" />
                 <span>Document Integrity Proof</span>
@@ -422,7 +420,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
               {verifyResult && (
                 <FadeIn>
                   <div
-                    className={`border p-4 rounded-sm space-y-2 font-mono text-[11px] ${
+                    className={`border p-6 rounded-lg space-y-3 font-mono text-[11px] ${
                       verifyResult.isTampered
                         ? 'bg-red-50 border-red-300 text-red-900'
                         : 'bg-paper-surface border-paper-border text-paper-ink'
@@ -461,7 +459,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
             </div>
 
             {/* Quick Audit Snapshot in Vault */}
-            <div className="bg-paper-card border border-paper-border p-5 rounded-sm shadow-offset-sm space-y-2.5">
+            <div className="bg-paper-card border border-paper-border p-8 rounded-xl shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-heading font-bold text-xs uppercase text-paper-ink flex items-center space-x-1.5">
                   <Clock size={15} weight="bold" className="text-paper-rust" />

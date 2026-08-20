@@ -337,9 +337,9 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {/* Header Banner */}
-      <div className="bg-paper-card border border-paper-border p-5 rounded-lg">
+      <div className="bg-paper-card border border-paper-border p-8 rounded-xl shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-paper-border bg-paper-surface">
@@ -349,9 +349,6 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
               <h2 className="font-heading text-lg font-bold text-paper-ink">
                 Audit activity & Ledger
               </h2>
-              <p className="text-xs text-paper-muted mt-1 font-body max-w-2xl">
-                Cryptographically verifiable record of all document events, access attempts, and authentication activities with full initiator identification.
-              </p>
             </div>
           </div>
 
@@ -382,43 +379,43 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
 
       {/* Metrics Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-paper-card border border-paper-border p-4 rounded-lg space-y-2">
-          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold">
-            <span>Verified events</span>
-            <ShieldCheck size={17} weight="bold" className="text-emerald-600" />
+        <div className="group bg-paper-card border border-paper-border p-5 rounded-xl space-y-3 hover:-translate-y-1 hover:border-paper-rust/50 hover:shadow-lg hover:shadow-paper-rust/5 transition-all duration-300">
+          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold uppercase tracking-wider">
+            <span className="group-hover:text-paper-rust transition-colors duration-300">Verified events</span>
+            <ShieldCheck size={18} weight="bold" className="text-emerald-500" />
           </div>
-          <p className="text-2xl leading-none font-heading font-bold text-paper-ink">{auditLogs.length}</p>
+          <p className="text-4xl leading-none font-heading font-bold text-paper-ink">{auditLogs.length}</p>
           <span className="text-[10px] text-paper-muted block">Records in the audit stream</span>
         </div>
 
-        <div className="bg-paper-card border border-paper-border p-4 rounded-lg space-y-2">
-          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold">
-            <span>On-chain records</span>
-            <HardDrives size={17} weight="bold" className="text-paper-rust" />
+        <div className="group bg-paper-card border border-paper-border p-5 rounded-xl space-y-3 hover:-translate-y-1 hover:border-paper-rust/50 hover:shadow-lg hover:shadow-paper-rust/5 transition-all duration-300">
+          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold uppercase tracking-wider">
+            <span className="group-hover:text-paper-rust transition-colors duration-300">On-chain records</span>
+            <HardDrives size={18} weight="bold" className="text-paper-rust" />
           </div>
-          <p className="text-2xl leading-none font-heading font-bold text-paper-ink">
+          <p className="text-4xl leading-none font-heading font-bold text-paper-ink">
             {auditLogs.filter((log) => log.status === 'Anchored').length}
           </p>
           <span className="text-[10px] text-paper-muted block">Metadata anchored to Sepolia</span>
         </div>
 
-        <div className="bg-paper-card border border-paper-border p-4 rounded-lg space-y-2">
-          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold">
-            <span>Active services</span>
-            <Database size={17} weight="bold" className="text-blue-600" />
+        <div className="group bg-paper-card border border-paper-border p-5 rounded-xl space-y-3 hover:-translate-y-1 hover:border-paper-rust/50 hover:shadow-lg hover:shadow-paper-rust/5 transition-all duration-300">
+          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold uppercase tracking-wider">
+            <span className="group-hover:text-paper-rust transition-colors duration-300">Active services</span>
+            <Database size={18} weight="bold" className="text-blue-500" />
           </div>
-          <p className="text-2xl leading-none font-heading font-bold text-paper-ink">
+          <p className="text-4xl leading-none font-heading font-bold text-paper-ink">
             {new Set(auditLogs.map((log) => log.service)).size || '-'}
           </p>
           <span className="text-[10px] text-paper-muted block">Services represented in events</span>
         </div>
 
-        <div className="bg-paper-card border border-paper-border p-4 rounded-lg space-y-2">
-          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold">
-            <span>Needs review</span>
-            <Clock size={17} weight="bold" className="text-amber-600" />
+        <div className="group bg-paper-card border border-paper-border p-5 rounded-xl space-y-3 hover:-translate-y-1 hover:border-paper-rust/50 hover:shadow-lg hover:shadow-paper-rust/5 transition-all duration-300">
+          <div className="flex items-center justify-between text-paper-muted text-[11px] font-semibold uppercase tracking-wider">
+            <span className="group-hover:text-paper-rust transition-colors duration-300">Needs review</span>
+            <Clock size={18} weight="bold" className="text-amber-500" />
           </div>
-          <p className="text-2xl leading-none font-heading font-bold text-paper-ink">
+          <p className="text-4xl leading-none font-heading font-bold text-paper-ink">
             {auditLogs.filter((log) => log.status === 'Review').length}
           </p>
           <span className="text-[10px] text-paper-muted block">Unverified or failed writes</span>
@@ -426,10 +423,10 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
       </div>
 
       {/* Main Dual Panels: Verifier & Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Cryptographic Verifier */}
         <div className="lg:col-span-5 space-y-4 text-xs">
-          <div className="bg-paper-card border border-paper-border p-5 shadow-offset-sm rounded-lg space-y-4">
+          <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
             <div className="flex items-center justify-between border-b border-paper-border pb-3">
               <h3 className="font-heading text-base font-bold text-paper-ink flex items-center space-x-2">
                 <Fingerprint size={18} weight="bold" className="text-paper-rust" />
@@ -437,10 +434,6 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
               </h3>
               <span className="text-[10px] text-paper-muted font-medium">Cryptographic Check</span>
             </div>
-
-            <p className="text-xs text-paper-muted font-body leading-relaxed">
-              Paste an audit ID, transaction hash, or initiator wallet to inspect cryptographic proof & authorized identity.
-            </p>
 
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -562,13 +555,12 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
 
         {/* Right Column: Live Audit Stream & Filters */}
         <div className="lg:col-span-7 space-y-4 text-xs">
-          <div className="bg-paper-card border border-paper-border p-5 shadow-offset-sm rounded-lg space-y-4">
+          <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-paper-border pb-3">
               <div>
                 <h3 className="font-heading text-base font-bold text-paper-ink">
                   Audit Stream
                 </h3>
-                <p className="text-[11px] text-paper-muted font-body mt-0.5">Live immutable activity feed across all services with full initiator identification.</p>
               </div>
 
               <div className="flex items-center space-x-2">

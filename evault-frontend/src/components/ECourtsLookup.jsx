@@ -289,25 +289,15 @@ export function ECourtsLookup({ currentUser }) {
   }
 
   return (
-    <div className="space-y-6 font-body">
+    <div className="space-y-8 font-body">
       
       {/* Header & Search Interface */}
-      <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm space-y-4">
+      <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-border pb-4">
           <div>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">
-              02 / NATIONAL ECOURTS INTEGRATION · {userRole} CONSOLE
-            </span>
             <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">
               Indian Case Records & Filing Registry
             </h2>
-            <p className="text-xs text-paper-muted">
-              {canCreateCase
-                ? 'Authorized to create new cases and search existing case dockets.'
-                : isJudge
-                  ? 'Judicial presiding officer — view and search case dockets across jurisdictions (Case creation restricted).'
-                  : 'Role-based case management portal.'}
-            </p>
           </div>
 
           {casesList.length > 0 && (
@@ -483,20 +473,11 @@ export function ECourtsLookup({ currentUser }) {
       {/* EXCLUSIVE CASE CREATION VIEW (Only for Lawyer & Police) */}
       {/* ========================================================================= */}
       {activeTab === 'create' && canCreateCase && (
-        <div className="bg-paper-card border border-paper-border p-6 shadow-offset rounded-sm space-y-5">
+        <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-8">
           <div className="border-b border-paper-border pb-3">
-            <div className="flex items-center space-x-2">
-              <ShieldCheck size={20} weight="bold" className="text-paper-rust" />
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">
-                OFFICIAL CASE REGISTRATION · {userRole === 'POLICE' ? 'POLICE FORENSIC / FIR' : 'ADVOCATE FILING'}
-              </span>
-            </div>
             <h3 className="font-heading text-lg font-bold text-paper-ink mt-0.5">
-              Register New Legal Matter in National eCourts
+              Register New Case
             </h3>
-            <p className="text-xs text-paper-muted font-body">
-              File a new case into the persistent registry. This will assign docket IDs and allow document filing and judicial order attachments.
-            </p>
           </div>
 
           <form onSubmit={handleCreateCaseSubmit} className="space-y-4 font-mono text-xs">
@@ -678,7 +659,7 @@ export function ECourtsLookup({ currentUser }) {
 
       {/* Case Details View */}
       {activeTab === 'case' && caseData && (
-        <div className="bg-paper-card border border-paper-ink p-6 shadow-offset space-y-5 rounded-sm">
+        <div className="bg-paper-card border border-paper-border p-8 shadow-sm space-y-8 rounded-xl">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-paper-border pb-4">
             <div>
@@ -689,7 +670,7 @@ export function ECourtsLookup({ currentUser }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
-            <div className="bg-paper-surface border border-paper-border p-3.5 rounded-sm">
+            <div className="bg-paper-surface border border-paper-border p-5 rounded-xl">
               <span className="text-[10px] text-paper-muted uppercase font-bold">JURISDICTION COURT</span>
               <p className="text-xs font-bold text-paper-ink mt-1">{caseData.court}</p>
             </div>
@@ -699,12 +680,12 @@ export function ECourtsLookup({ currentUser }) {
               <p className="text-xs font-bold text-paper-ink mt-1">{caseData.judge || 'Unassigned'}</p>
             </div>
 
-            <div className="bg-paper-surface border border-paper-border p-3.5 rounded-sm">
+            <div className="bg-paper-surface border border-paper-border p-5 rounded-xl">
               <span className="text-[10px] text-paper-muted uppercase font-bold">CASE CATEGORY</span>
               <p className="text-xs font-bold text-paper-ink mt-1">{caseData.caseType}</p>
             </div>
 
-            <div className="bg-paper-surface border border-paper-border p-3.5 rounded-sm">
+            <div className="bg-paper-surface border border-paper-border p-5 rounded-xl">
               <span className="text-[10px] text-paper-muted uppercase font-bold">NEXT HEARING</span>
               <p className="text-xs font-bold text-paper-rust mt-1">{caseData.nextHearing || 'Disposed'}</p>
             </div>
@@ -732,7 +713,7 @@ export function ECourtsLookup({ currentUser }) {
         <div className="space-y-3 font-mono text-xs">
           <span className="text-paper-muted uppercase font-bold">FOUND {casesList.length} RECORD MATCHES</span>
           {casesList.map((c) => (
-            <div key={c.caseId} className="bg-paper-card border border-paper-border rounded-sm p-4 flex items-center justify-between shadow-offset-sm hover:border-paper-ink transition">
+            <div key={c.caseId} className="bg-paper-card border border-paper-border rounded-xl p-6 flex items-center justify-between shadow-sm hover:border-paper-rust/50 hover:-translate-y-0.5 transition-all duration-200">
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="font-bold text-paper-rust">{c.caseId}</span>
