@@ -96,6 +96,18 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
         uploadedBy: uploadRes.uploaded_by || walletAddress || displayName,
         createdAt: uploadRes.created_at,
       });
+
+      api.logAuditEvent({
+        action: 'DOCUMENT_FILED_ON_CHAIN',
+        service: 'Document',
+        performedBy: walletAddress || currentUser?.walletAddress || '0xDemoWallet',
+        role: 'LAWYER',
+        userName: displayName,
+        docId: uploadRes.doc_id,
+        caseId: cleanCaseId,
+        details: `Advocate ${displayName} filed and encrypted "${selectedFile.name}" (${docType}) for case ${cleanCaseId}.`,
+        txHash: uploadRes.tx_hash,
+      }).catch(console.warn);
     } catch (err) {
       setUploadStep(null);
       setError(
