@@ -312,13 +312,13 @@ export function ClassifierModule({ onSecureDocument }) {
             <button
               type="button"
               onClick={() => {
-                let formattedCase = result.caseNumber ? String(result.caseNumber).trim().toUpperCase() : 'CASE-BR-001';
-                if (!/^CASE-[A-Z]{2}-\d{3,}$/.test(formattedCase)) {
+                let formattedCase = result.caseNumber ? String(result.caseNumber).trim().toUpperCase() : '';
+                if (formattedCase && !/^CASE-[A-Z]{2}-\d{3,}$/.test(formattedCase)) {
                   const stateMatch = formattedCase.match(/\b(MH|BR|DL|KA|UP|WB|TN|GJ|RJ|MP|KL|AP|TS|PB|HR)\b/i);
                   const numMatch = formattedCase.match(/\d{3,}/);
-                  const state = stateMatch ? stateMatch[1].toUpperCase() : 'BR';
-                  const num = numMatch ? numMatch[0] : '001';
-                  formattedCase = `CASE-${state}-${num}`;
+                  if (stateMatch && numMatch) {
+                    formattedCase = `CASE-${stateMatch[1].toUpperCase()}-${numMatch[0]}`;
+                  }
                 }
                 onSecureDocument({
                   documentType: result.documentType,

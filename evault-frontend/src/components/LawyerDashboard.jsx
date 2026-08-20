@@ -52,12 +52,12 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
     }
     const cleanCaseId = caseId.trim().toUpperCase();
     if (!cleanCaseId) {
-      setError('Enter the associated case ID (e.g. CASE-BR-001).');
+      setError('Enter the associated case ID (e.g. CASE-MH-101).');
       return;
     }
     const caseIdRegex = /^CASE-[A-Z]{2}-\d{3,}$/;
     if (!caseIdRegex.test(cleanCaseId)) {
-      setError("Invalid Case ID format. Must follow 'CASE-XX-###' (e.g. CASE-BR-001, CASE-MH-102), where the 2 letters represent the State code.");
+      setError("Invalid Case ID format. Must follow 'CASE-XX-###' (e.g. CASE-MH-101, CASE-DL-201), where the 2 letters represent the State code.");
       return;
     }
     const token = localStorage.getItem('evault-token');
@@ -215,7 +215,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-paper-muted uppercase mb-1 tracking-wide">
-                  Associated case ID (Format: CASE-BR-001)
+                  Associated case ID (Format: CASE-MH-101)
                 </label>
                 <input
                   type="text"
@@ -224,7 +224,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
                     setCaseId(e.target.value.toUpperCase());
                     setError(null);
                   }}
-                  placeholder="e.g. CASE-BR-001"
+                  placeholder="e.g. CASE-MH-101"
                   className={`w-full bg-paper-bg border rounded-sm p-2.5 text-xs text-paper-ink font-mono focus:outline-none transition ${
                     caseId
                       ? /^CASE-[A-Z]{2}-\d{3,}$/.test(caseId.trim().toUpperCase())
@@ -235,7 +235,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
                 />
                 {caseId && !/^CASE-[A-Z]{2}-\d{3,}$/.test(caseId.trim().toUpperCase()) && (
                   <p className="text-[10px] text-amber-600 mt-1 font-mono">
-                    Format required: CASE-XX-### (e.g. CASE-BR-001)
+                    Format required: CASE-XX-### (e.g. CASE-MH-101)
                   </p>
                 )}
               </div>

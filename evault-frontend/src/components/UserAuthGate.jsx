@@ -512,10 +512,10 @@ export function UserAuthGate({
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {[
-                          { id: 'LAWYER', label: 'Advocate', icon: <FileText size={15} weight="bold" />, desc: 'Lawyer / Counsel' },
-                          { id: 'JUDGE', label: 'Judicial Officer', icon: <Gavel size={15} weight="bold" />, desc: 'Judge / Bench' },
-                          { id: 'CITIZEN', label: 'Citizen', icon: <User size={15} weight="bold" />, desc: 'Petitioner / Client' },
-                          { id: 'POLICE', label: 'Police', icon: <ShieldCheck size={15} weight="bold" />, desc: 'Law Enforcement' },
+                          { id: 'LAWYER', label: 'Advocate', icon: <FileText size={15} weight="bold" />, desc: 'Case Creation & Filing' },
+                          { id: 'POLICE', label: 'Police Officer', icon: <ShieldCheck size={15} weight="bold" />, desc: 'Case & FIR Creation' },
+                          { id: 'JUDGE', label: 'Judicial Officer', icon: <Gavel size={15} weight="bold" />, desc: 'Orders & Bench (No Case Creation)' },
+                          { id: 'CITIZEN', label: 'Citizen / Client', icon: <User size={15} weight="bold" />, desc: 'Upload, MyVault & Audit' },
                         ].map((r) => (
                           <button
                             key={r.id}

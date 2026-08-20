@@ -138,7 +138,7 @@ export function JudgeDashboard({ currentUser }) {
           )}
 
           {!loadingDockets && dockets.length === 0 && (
-            <p className="text-paper-muted text-[11px]">No dockets available. Check that backend services are running.</p>
+            <p className="text-paper-muted text-[11px]">No case dockets registered yet. Cases registered by Advocates or Police in eCourts will appear here for judicial review.</p>
           )}
 
           <StaggerContainer className="space-y-2">

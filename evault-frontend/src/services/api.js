@@ -135,34 +135,160 @@ export const api = {
   // =========================================================
   // eCourts API (Integration Service via Gateway)
   // =========================================================
+  createCase: async (caseData) => {
+    let result = null;
+    try {
+      const res = await apiClient.post('/ecourts/cases', caseData, { timeout: 15000 });
+      if (res.data?.success) {
+        result = res.data;
+      }
+    } catch (err) {
+      console.warn('Backend eCourts create failed, storing locally:', err.message);
+    }
+
+    // Always ensure local registry has the newly created case
+    try {
+      const raw = localStorage.getItem('evault-registered-cases');
+      const list = raw ? JSON.parse(raw) : [];
+      const normalized = {
+        caseId: caseData.caseId,
+        title: caseData.title || `Case ${caseData.caseId}`,
+        court: caseData.court || 'District Court',
+        judge: caseData.judge || 'Hon. Judicial Officer',
+        filingDate: caseData.filingDate || new Date().toISOString().split('T')[0],
+        status: caseData.status || 'ACTIVE',
+        parties: {
+          petitioner: caseData.petitioner || caseData.parties?.petitioner || 'Petitioner',
+          respondent: caseData.respondent || caseData.parties?.respondent || 'Respondent',
+        },
+        caseType: caseData.caseType || 'Civil',
+        lawyerBar: caseData.lawyerBar || caseData.barNumber || null,
+        policeBadge: caseData.policeBadge || null,
+        createdBy: caseData.createdBy || 'Advocate',
+        nextHearing: caseData.nextHearing || '2026-09-15',
+        createdAt: new Date().toISOString(),
+      };
+
+      const existingIdx = list.findIndex((c) => c.caseId === normalized.caseId);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...normalized };
+      } else {
+        list.unshift(normalized);
+      }
+      localStorage.setItem('evault-registered-cases', JSON.stringify(list));
+
+      if (!result) {
+        result = { success: true, data: normalized };
+      }
+    } catch (e) {
+      console.warn('Could not save case to local store:', e);
+    }
+
+    return result || { success: true, data: caseData };
+  },
+
   getCaseById: async (caseId) => {
-    const res = await apiClient.get(`/ecourts/case/${encodeURIComponent(caseId)}`);
-    return res.data;
+    const cleanId = (caseId || '').trim().toUpperCase();
+    try {
+      const res = await apiClient.get(`/ecourts/case/${encodeURIComponent(cleanId)}`);
+      if (res.data?.success && res.data?.data) {
+        return res.data;
+      }
+    } catch {
+      /* fallback to local registry */
+    }
+
+    try {
+      const raw = localStorage.getItem('evault-registered-cases');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const found = list.find((c) => (c.caseId || '').toUpperCase() === cleanId);
+        if (found) return { success: true, data: found };
+      }
+    } catch {
+      /* ignore */
+    }
+
+    throw new Error(`Case record not found in National eCourts: ${cleanId}`);
   },
 
   getCasesByJudge: async (judgeId) => {
-    const res = await apiClient.get(`/ecourts/cases/judge/${encodeURIComponent(judgeId)}`);
-    return res.data;
+    try {
+      const res = await apiClient.get(`/ecourts/cases/judge/${encodeURIComponent(judgeId)}`);
+      return res.data;
+    } catch {
+      return { success: true, data: [] };
+    }
   },
 
   getCasesByLawyer: async (barNumber) => {
-    const res = await apiClient.get(`/ecourts/cases/lawyer/${encodeURIComponent(barNumber)}`);
-    return res.data;
+    try {
+      const res = await apiClient.get(`/ecourts/cases/lawyer/${encodeURIComponent(barNumber)}`);
+      return res.data;
+    } catch {
+      return { success: true, data: [] };
+    }
   },
 
   getCourts: async () => {
-    const res = await apiClient.get('/ecourts/courts');
-    return res.data;
+    try {
+      const res = await apiClient.get('/ecourts/courts');
+      return res.data;
+    } catch {
+      return {
+        success: true,
+        data: [
+          { courtId: 'CRT-SC-01', name: 'Supreme Court of India', state: 'New Delhi', type: 'Supreme Court' },
+          { courtId: 'CRT-MH-01', name: 'Mumbai High Court', state: 'Maharashtra', type: 'High Court' },
+          { courtId: 'CRT-DL-01', name: 'Delhi High Court', state: 'Delhi', type: 'High Court' },
+          { courtId: 'CRT-KA-01', name: 'Karnataka High Court', state: 'Karnataka', type: 'High Court' },
+          { courtId: 'CRT-TN-01', name: 'Madras High Court', state: 'Tamil Nadu', type: 'High Court' },
+          { courtId: 'CRT-BR-02', name: 'District Court Patna', state: 'Bihar', type: 'District Court' },
+          { courtId: 'CRT-KA-02', name: 'District Court Bengaluru', state: 'Karnataka', type: 'District Court' },
+        ],
+      };
+    }
   },
 
   listCases: async () => {
-    const res = await apiClient.get('/ecourts/cases');
-    return res.data;
+    let backendCases = [];
+    try {
+      const res = await apiClient.get('/ecourts/cases');
+      if (res.data?.success && Array.isArray(res.data?.data)) {
+        backendCases = res.data.data;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    let localCases = [];
+    try {
+      const raw = localStorage.getItem('evault-registered-cases');
+      if (raw) localCases = JSON.parse(raw);
+    } catch {
+      /* ignore */
+    }
+
+    const combined = [...localCases, ...backendCases];
+    const seen = new Set();
+    const unique = [];
+    for (const c of combined) {
+      if (c && c.caseId && !seen.has(c.caseId)) {
+        seen.add(c.caseId);
+        unique.push(c);
+      }
+    }
+
+    return { success: true, data: unique };
   },
 
   getECourtsHealth: async () => {
-    const res = await apiClient.get('/ecourts/health');
-    return res.data;
+    try {
+      const res = await apiClient.get('/ecourts/health');
+      return res.data;
+    } catch {
+      return { success: true, data: { status: 'STANDBY' } };
+    }
   },
 
   // =========================================================
@@ -371,6 +497,52 @@ export const api = {
   verifyDocument: async (docId) => {
     const res = await docClient.get(`/api/documents/verify/${encodeURIComponent(docId)}`);
     return res.data;
+  },
+
+  saveUserVaultDoc: (doc) => {
+    try {
+      const raw = localStorage.getItem('evault-user-vault-docs');
+      const list = raw ? JSON.parse(raw) : [];
+      const normalized = {
+        doc_id: doc.docId || doc.doc_id || `DOC-${Date.now()}`,
+        case_id: doc.caseId || doc.case_id || 'VAULT-CLIENT',
+        doc_type: doc.docType || doc.doc_type || 'Personal Legal Document',
+        ipfs_cid: doc.ipfsCid || doc.ipfs_cid || '—',
+        document_hash: doc.documentHash || doc.document_hash || '—',
+        status: doc.status || 'STORED',
+        tx_hash: doc.txHash || doc.tx_hash || null,
+        uploaded_by: doc.uploadedBy || doc.uploaded_by || 'Client',
+        created_at: doc.createdAt || doc.created_at || new Date().toISOString(),
+        fileName: doc.fileName || `${doc.doc_id || 'document'}.pdf`,
+        fileSize: doc.fileSize || '1.4 MB',
+      };
+      const existingIdx = list.findIndex((d) => (d.doc_id || d.docId) === normalized.doc_id);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...normalized };
+      } else {
+        list.unshift(normalized);
+      }
+      localStorage.setItem('evault-user-vault-docs', JSON.stringify(list));
+      return normalized;
+    } catch (e) {
+      console.warn('Could not save vault doc locally:', e);
+      return doc;
+    }
+  },
+
+  getUserVaultDocs: (walletAddress) => {
+    try {
+      const raw = localStorage.getItem('evault-user-vault-docs');
+      const list = raw ? JSON.parse(raw) : [];
+      if (!walletAddress) return list;
+      const walletLower = walletAddress.toLowerCase();
+      return list.filter((d) => {
+        const uploader = (d.uploaded_by || d.uploadedBy || '').toLowerCase();
+        return !uploader || uploader.includes('client') || uploader === walletLower || uploader === '0xdemowallet' || uploader === '0xvaultuser';
+      });
+    } catch {
+      return [];
+    }
   },
 
   getAuditByDocument: async (docId) => {

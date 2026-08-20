@@ -27,9 +27,28 @@ import { AnimatePresence, motion } from 'framer-motion';
 const DOCUMENT_SERVICE_TABS = new Set(['lawyer-ws', 'judge-ws', 'client-ws', 'classifier']);
 
 const roleDefaultTab = (userRole) => {
-  if (userRole === 'JUDGE') return 'judge-ws';
-  if (userRole === 'CITIZEN' || userRole === 'CLIENT') return 'client-ws';
+  const role = (userRole || '').toUpperCase();
+  if (role === 'JUDGE') return 'judge-ws';
+  if (role === 'CITIZEN' || role === 'CLIENT') return 'client-ws';
+  if (role === 'POLICE') return 'ecourts';
   return 'lawyer-ws';
+};
+
+const getRoleAllowedTabs = (userRole) => {
+  const role = (userRole || '').toUpperCase();
+  if (role === 'CITIZEN' || role === 'CLIENT') {
+    // Client strictly has access to 3 functionalities: Document Upload & My Vault (client-ws) and Audit (auth)
+    return new Set(['client-ws', 'auth']);
+  }
+  if (role === 'JUDGE') {
+    // Judge has access to all remaining functionalities (Orders, Documents, My Vault, Audit, Classify, Cases, Identity), but CANNOT create cases (enforced in ECourtsLookup)
+    return new Set(['judge-ws', 'lawyer-ws', 'client-ws', 'auth', 'classifier', 'ecourts', 'aadhaar']);
+  }
+  if (role === 'POLICE' || role === 'LAWYER') {
+    // Lawyer & Police have access to Documents, Cases (with Create Case), Classify, Audit, Identity, My Vault
+    return new Set(['lawyer-ws', 'ecourts', 'classifier', 'auth', 'aadhaar', 'client-ws']);
+  }
+  return new Set(['lawyer-ws', 'client-ws', 'auth', 'classifier', 'ecourts', 'aadhaar']);
 };
 
 export function App() {
@@ -81,10 +100,7 @@ export function App() {
         name: savedName || `${savedWallet.substring(0, 10)}…`,
       };
       setCurrentUser(restoredUser);
-
-      if (savedRole === 'JUDGE') setActiveTab('judge-ws');
-      else if (savedRole === 'CITIZEN' || savedRole === 'CLIENT') setActiveTab('client-ws');
-      else setActiveTab('lawyer-ws');
+      setActiveTab(roleDefaultTab(savedRole));
 
       api.getUserRole(savedWallet).then((r) => {
         if (r && r !== savedRole) {
@@ -101,10 +117,16 @@ export function App() {
     }
   }, [walletAddress]);
 
-  // Redirect away from document tabs when KYC is incomplete
+  // Guard active tab based on user role and KYC state
   useEffect(() => {
     if (!currentUser || aadhaarChecking) return;
+    const allowed = getRoleAllowedTabs(currentUser.role);
+    if (!allowed.has(activeTab)) {
+      setActiveTab(roleDefaultTab(currentUser.role));
+      return;
+    }
     if (!isKycComplete && DOCUMENT_SERVICE_TABS.has(activeTab)) {
+      // If user is client and KYC is incomplete, keep on aadhaar or client-ws if simulated
       setActiveTab('aadhaar');
     }
   }, [currentUser, aadhaarChecking, isKycComplete, activeTab]);
@@ -218,7 +240,6 @@ export function App() {
       details: `User ${userData.name || 'Authorized User'} (${userData.role || 'CLIENT'}) successfully authenticated with credentials and entered eVault. Bound Wallet: ${userData.walletAddress || '0xDemoWallet'}`,
     }).catch(console.warn);
 
-
     const status = userData.walletAddress
       ? await checkWalletAadhaarBinding(userData.walletAddress)
       : null;
@@ -241,6 +262,10 @@ export function App() {
   };
 
   const handleTabChange = (tabId) => {
+    const allowed = getRoleAllowedTabs(currentUser?.role);
+    if (!allowed.has(tabId)) {
+      return;
+    }
     if (DOCUMENT_SERVICE_TABS.has(tabId) && !isKycComplete) {
       setActiveTab('aadhaar');
       return;
@@ -249,6 +274,9 @@ export function App() {
   };
 
   const tabBtn = (id, icon, label, requiresKyc = false) => {
+    const allowed = getRoleAllowedTabs(currentUser?.role);
+    if (!allowed.has(id)) return null;
+
     const locked = requiresKyc && !isKycComplete;
     return (
       <button
@@ -291,6 +319,9 @@ export function App() {
     );
   }
 
+  const userRole = (currentUser?.role || '').toUpperCase();
+  const isClientRole = userRole === 'CLIENT' || userRole === 'CITIZEN';
+
   return (
     <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
       {/* Mandatory Aadhaar e-KYC Gate (after sign-in) */}
@@ -326,7 +357,11 @@ export function App() {
         onConnectWallet={handleConnectWallet}
         onLogout={handleLogout}
         aadhaarStatus={aadhaarStatus}
-        onOpenIdentity={() => setActiveTab('aadhaar')}
+        onOpenIdentity={() => {
+          if (getRoleAllowedTabs(currentUser?.role).has('aadhaar')) {
+            setActiveTab('aadhaar');
+          }
+        }}
       />
 
       {/* Main Workspace */}
@@ -335,13 +370,7 @@ export function App() {
         <div className="bg-paper-card/80 border border-paper-border rounded-lg p-1.5">
             <nav className="flex flex-wrap gap-1 font-heading font-medium" aria-label="Workspace navigation">
 
-              {tabBtn(
-                'lawyer-ws',
-                <FileText size={14} weight="bold" />,
-                'Documents',
-                true
-              )}
-
+              {/* JUDGE: Orders Tab */}
               {tabBtn(
                 'judge-ws',
                 <Gavel size={14} weight="bold" />,
@@ -349,19 +378,30 @@ export function App() {
                 true
               )}
 
+              {/* LAWYER / POLICE / JUDGE: Documents Filing Tab */}
               {tabBtn(
-                'client-ws',
-                <User size={14} weight="bold" />,
-                'My vault',
+                'lawyer-ws',
+                <FileText size={14} weight="bold" />,
+                'Documents',
                 true
               )}
 
+              {/* ALL ROLES: My Vault Tab */}
+              {tabBtn(
+                'client-ws',
+                <User size={14} weight="bold" />,
+                isClientRole ? 'My Vault & Upload' : 'My Vault',
+                true
+              )}
+
+              {/* ALL ROLES: Audit Tab */}
               {tabBtn(
                 'auth',
                 <ShieldCheck size={14} weight="bold" />,
                 'Audit'
               )}
 
+              {/* LAWYER / POLICE / JUDGE: AI Classifier Tab */}
               {tabBtn(
                 'classifier',
                 <Sparkle size={14} weight="bold" />,
@@ -369,12 +409,14 @@ export function App() {
                 true
               )}
 
+              {/* LAWYER / POLICE / JUDGE: Cases / eCourts Registry Tab */}
               {tabBtn(
                 'ecourts',
                 <Scales size={14} weight="bold" />,
                 'Cases'
               )}
 
+              {/* LAWYER / POLICE / JUDGE: Identity Tab */}
               {tabBtn(
                 'aadhaar',
                 <Fingerprint size={14} weight="bold" />,
@@ -402,7 +444,7 @@ export function App() {
             )}
 
             {activeTab === 'ecourts' && (
-              <ECourtsLookup />
+              <ECourtsLookup currentUser={currentUser} />
             )}
 
             {activeTab === 'aadhaar' && (
@@ -439,7 +481,10 @@ export function App() {
             )}
 
             {activeTab === 'client-ws' && isKycComplete && (
-              <ClientDashboard />
+              <ClientDashboard
+                walletAddress={walletAddress}
+                currentUser={currentUser}
+              />
             )}
           </motion.div>
         </AnimatePresence>
