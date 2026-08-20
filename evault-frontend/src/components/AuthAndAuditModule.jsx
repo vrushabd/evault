@@ -259,15 +259,8 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
     setIsLoadingLogs(true);
     setAuditError('');
     try {
-      let rows = [];
-      try {
-        const response = await api.getAuditRecent(50);
-        rows = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
-      } catch (e) {
-        const fallback = await api.getAuditLogs();
-        rows = Array.isArray(fallback) ? fallback : [];
-      }
-      setAuditLogs(rows.map((l) => normalizeAuditLog(l, currentUser)));
+      const rows = await api.getAuditLogs();
+      setAuditLogs(Array.isArray(rows) ? rows.map((l) => normalizeAuditLog(l, currentUser)) : []);
     } catch (err) {
       console.warn('Could not load audit records:', err);
       setAuditError('Could not load live audit records. Please check the audit service.');

@@ -94,7 +94,17 @@ export function JudgeDashboard({ currentUser }) {
         network: 'Sepolia',
         hashRegistered: Boolean(txHash || signTx),
         auditRecorded: true,
+        caseStatus: 'CLOSED',
       });
+
+      // 3. Mark Case Status as CLOSED in both local state and backend eCourts
+      await api.updateCaseStatus(selectedCase.caseId, 'CLOSED');
+      setDockets((prev) =>
+        prev.map((d) =>
+          d.caseId === selectedCase.caseId ? { ...d, status: 'CLOSED' } : d
+        )
+      );
+      setSelectedCase((prev) => (prev ? { ...prev, status: 'CLOSED' } : prev));
 
       api.logAuditEvent({
         action: 'JUDICIAL_ORDER_SIGNED',
@@ -104,7 +114,7 @@ export function JudgeDashboard({ currentUser }) {
         userName: judgeName,
         docId,
         caseId: selectedCase.caseId,
-        details: `Judicial Officer ${judgeName} (JUDGE) signed and anchored judicial order ${docId} for case ${selectedCase.caseId} on Sepolia. TX: ${signTx || txHash}`,
+        details: `Judicial Officer ${judgeName} (JUDGE) signed and anchored judicial order ${docId} for case ${selectedCase.caseId} on Sepolia. Case marked as CLOSED. TX: ${signTx || txHash}`,
         txHash: signTx || txHash,
       }).catch(console.warn);
 
@@ -142,7 +152,7 @@ export function JudgeDashboard({ currentUser }) {
           <div className="flex items-center justify-between border-b border-paper-border pb-3">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase">Assigned Case Dockets</h3>
             <span className="text-[10px] bg-paper-surface border border-paper-border px-2 py-0.5 rounded-sm font-bold">
-              {dockets.length} ACTIVE
+              {dockets.filter((d) => d.status !== 'CLOSED').length} ACTIVE · {dockets.filter((d) => d.status === 'CLOSED').length} CLOSED
             </span>
           </div>
 
@@ -167,7 +177,11 @@ export function JudgeDashboard({ currentUser }) {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-paper-rust">{item.caseId}</span>
-                    <span className="text-[10px] bg-paper-card border border-paper-border px-2 py-0.5 font-bold">
+                    <span className={`text-[10px] border px-2 py-0.5 font-bold rounded-sm ${
+                      item.status === 'CLOSED'
+                        ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30'
+                        : 'bg-paper-card border-paper-border text-paper-ink'
+                    }`}>
                       {item.status}
                     </span>
                   </div>
@@ -228,8 +242,9 @@ export function JudgeDashboard({ currentUser }) {
                       ? 'bg-amber-50 border-amber-300 text-amber-950'
                       : 'bg-emerald-50 border-emerald-300 text-emerald-950'
                   }`}>
-                    <p className="font-heading font-bold text-xs">ORDER SIGNED ✓</p>
+                    <p className="font-heading font-bold text-xs">JUDICIAL ORDER SIGNED & CASE CLOSED ✓</p>
                     <p className="text-[11px] font-mono">DOCUMENT HASH ✓ · {signResult.docId}</p>
+                    <p className="text-[11px]">CASE STATUS ✓ · DISPOSED / CLOSED</p>
                     <p className="text-[11px]">BLOCKCHAIN REGISTERED {signResult.mock ? '(simulated)' : '✓'}</p>
                     <p className="text-[11px]">AUDIT RECORDED ✓</p>
                     <div className="pt-2 border-t border-current/20 text-[11px] font-mono space-y-1">

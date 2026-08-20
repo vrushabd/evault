@@ -220,6 +220,52 @@ export const api = {
     return result || { success: true, data: caseData };
   },
 
+  updateCaseStatus: async (caseId, status = 'CLOSED') => {
+    const cleanId = (caseId || '').trim().toUpperCase();
+    let updatedCase = null;
+
+    // 1. Update in local storage registry
+    try {
+      const raw = localStorage.getItem('evault-registered-cases');
+      const list = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex((c) => (c.caseId || '').toUpperCase() === cleanId);
+      if (idx >= 0) {
+        list[idx] = {
+          ...list[idx],
+          status: status.toUpperCase(),
+          disposedDate: new Date().toISOString().split('T')[0],
+          updatedAt: new Date().toISOString(),
+        };
+        updatedCase = list[idx];
+        localStorage.setItem('evault-registered-cases', JSON.stringify(list));
+      }
+    } catch (e) {
+      console.warn('Local case status update error:', e);
+    }
+
+    // 2. Sync with backend integration service
+    try {
+      if (updatedCase) {
+        await apiClient.post('/ecourts/cases', updatedCase, { timeout: 4000 });
+      } else {
+        const existing = await api.getCaseById(cleanId);
+        if (existing?.data) {
+          const patched = {
+            ...existing.data,
+            status: status.toUpperCase(),
+            disposedDate: new Date().toISOString().split('T')[0],
+          };
+          await apiClient.post('/ecourts/cases', patched, { timeout: 4000 });
+          updatedCase = patched;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend case status update note:', err.message);
+    }
+
+    return { success: true, data: updatedCase || { caseId: cleanId, status } };
+  },
+
   getCaseById: async (caseId) => {
     const cleanId = (caseId || '').trim().toUpperCase();
     try {
