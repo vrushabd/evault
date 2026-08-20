@@ -34,6 +34,26 @@ def _ensure_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                action TEXT NOT NULL,
+                service TEXT DEFAULT 'Auth',
+                hash TEXT,
+                block_number TEXT,
+                status TEXT DEFAULT 'VERIFIED',
+                user_label TEXT,
+                user_name TEXT,
+                role TEXT,
+                performed_by TEXT,
+                details TEXT,
+                doc_id TEXT,
+                case_id TEXT
+            )
+            """
+        )
         # Table initialized clean - cases are created dynamically by Lawyers and Police
         conn.commit()
 
@@ -130,3 +150,66 @@ def delete_aadhaar_binding(wallet: str) -> bool:
             (wallet.lower(),),
         )
         return cursor.rowcount > 0
+
+
+# ── Audit Log Persistence ───────────────────────────────────────────────
+
+def insert_audit_log(log: Dict[str, Any]) -> Dict[str, Any]:
+    """Insert a single audit log entry. Silently skips duplicates."""
+    log_id = log.get("id", "")
+    if not log_id:
+        return log
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO audit_logs
+                (id, timestamp, action, service, hash, block_number, status,
+                 user_label, user_name, role, performed_by, details, doc_id, case_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                log_id,
+                log.get("timestamp", ""),
+                log.get("action", "UNKNOWN"),
+                log.get("service", "Auth"),
+                log.get("hash", ""),
+                log.get("blockNumber") or log.get("block_number", ""),
+                log.get("status", "VERIFIED"),
+                log.get("user", ""),
+                log.get("userName") or log.get("user_name", ""),
+                log.get("role", ""),
+                log.get("performedBy") or log.get("performed_by", ""),
+                log.get("details", ""),
+                log.get("docId") or log.get("doc_id"),
+                log.get("caseId") or log.get("case_id"),
+            ),
+        )
+    return log
+
+
+def list_audit_logs(limit: int = 100) -> List[Dict[str, Any]]:
+    """Return audit logs ordered most-recent-first."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    result = []
+    for r in rows:
+        result.append({
+            "id": r["id"],
+            "timestamp": r["timestamp"],
+            "action": r["action"],
+            "service": r["service"],
+            "hash": r["hash"],
+            "blockNumber": r["block_number"],
+            "status": r["status"],
+            "user": r["user_label"],
+            "userName": r["user_name"],
+            "role": r["role"],
+            "performedBy": r["performed_by"],
+            "details": r["details"],
+            "docId": r["doc_id"],
+            "caseId": r["case_id"],
+        })
+    return result

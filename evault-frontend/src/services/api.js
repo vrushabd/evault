@@ -696,7 +696,7 @@ export const api = {
   },
 
   // =========================================================
-  // Live Audit Trail Logging & Ledger Retrieval
+  // Universal Audit Trail — Shared Across All Sessions & Roles
   // =========================================================
   logAuditEvent: async ({ action, service = 'Auth', performedBy, role, userName, details, docId, caseId, txHash }) => {
     const now = new Date();
@@ -737,21 +737,18 @@ export const api = {
       caseId: caseId || null,
     };
 
-    // 1. Send to backend audit service via gateway
+    // 1. Persist to universal backend audit ledger (integration service SQLite)
     try {
-      await apiClient.post('/audit/log', {
-        docId: logEntry.docId,
-        caseId: logEntry.caseId,
-        action: logEntry.action,
-        performedBy: wallet,
-        txHash: logEntry.hash,
-        details: logEntry.details,
-      }, { timeout: 3000 });
+      try {
+        await apiClient.post('/audit/log', logEntry, { timeout: 4000 });
+      } catch {
+        await axios.post('http://localhost:8086/audit/log', logEntry, { timeout: 4000 });
+      }
     } catch (err) {
-      console.warn('Backend audit log note (persisting live log locally):', err.message);
+      console.warn('Backend universal audit write note:', err.message);
     }
 
-    // 2. Persist in local live audit trail
+    // 2. Also cache locally for instant display before next poll
     try {
       const raw = localStorage.getItem('evault-live-audit-logs');
       const existing = raw ? JSON.parse(raw) : [];
@@ -765,49 +762,32 @@ export const api = {
   },
 
   getAuditLogs: async () => {
-    let backendLogs = [];
+    // Primary: read from universal backend audit ledger (shared across all users)
     try {
-      const res = await apiClient.get('/audit/recent', { params: { limit: 50 }, timeout: 3000 });
+      let res;
+      try {
+        res = await apiClient.get('/audit/logs', { params: { limit: 100 }, timeout: 4000 });
+      } catch {
+        res = await axios.get('http://localhost:8086/audit/logs', { params: { limit: 100 }, timeout: 4000 });
+      }
       if (res.data?.success && Array.isArray(res.data?.data)) {
-        backendLogs = res.data.data.map((item, idx) => ({
-          id: `AUD-${item.id || (88100 + idx)}`,
-          timestamp: item.performedAt || item.timestamp || new Date().toISOString().replace('T', ' ').substring(0, 19),
-          action: item.action || 'SYSTEM_ACTION',
-          service: item.service || 'Audit',
-          hash: item.txHash || item.hash || ('0x' + Math.random().toString(16).substring(2, 66)),
-          blockNumber: item.blockNumber || '6482914',
-          status: 'VERIFIED',
-          user: item.performedBy || 'System User',
-          performedBy: item.performedBy || 'System User',
-          details: item.details || '',
-          docId: item.docId,
-          caseId: item.caseId,
-        }));
+        // Sync backend logs into localStorage so they persist across page reloads
+        try {
+          localStorage.setItem('evault-live-audit-logs', JSON.stringify(res.data.data.slice(0, 100)));
+        } catch {}
+        return res.data.data;
       }
     } catch {
-      /* ignore */
+      /* backend unreachable — fall back to localStorage */
     }
 
-    let localLogs = [];
+    // Fallback: localStorage cache
     try {
       const raw = localStorage.getItem('evault-live-audit-logs');
-      if (raw) localLogs = JSON.parse(raw);
-    } catch {
-      /* ignore */
-    }
+      if (raw) return JSON.parse(raw);
+    } catch {}
 
-    // Combine local real-time logs and backend logs
-    const combined = [...localLogs, ...backendLogs];
-    const seen = new Set();
-    const uniqueLogs = [];
-    for (const log of combined) {
-      if (log && log.id && !seen.has(log.id)) {
-        seen.add(log.id);
-        uniqueLogs.push(log);
-      }
-    }
-
-    return uniqueLogs;
+    return [];
   },
 
 

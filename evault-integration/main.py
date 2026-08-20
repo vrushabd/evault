@@ -58,11 +58,12 @@ async def log_requests(request: Request, call_next):
 
 
 # Import and Register Routers
-from routers import ecourts, classifier, aadhaar
+from routers import ecourts, classifier, aadhaar, audit
 
 app.include_router(ecourts.router)
 app.include_router(classifier.router)
 app.include_router(aadhaar.router)
+app.include_router(audit.router)
 
 
 @app.get("/", tags=["Root"])

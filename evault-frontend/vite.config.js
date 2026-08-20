@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
         '/api/documents': { target: docService, changeOrigin: true },
         '/blockchain': { target: blockchainService, changeOrigin: true },
         '/api': { target: gateway, changeOrigin: true },
-        '/audit': { target: gateway, changeOrigin: true },
+        '/audit': { target: integrationService, changeOrigin: true },
         '/notify': { target: gateway, changeOrigin: true },
         '/actuator': { target: gateway, changeOrigin: true },
       },
