@@ -20,7 +20,6 @@ import {
   Gavel,
   FileText,
   Lock,
-  SignOut,
 } from '@phosphor-icons/react';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -258,12 +257,12 @@ export function App() {
         onClick={() => handleTabChange(id)}
         disabled={locked}
         title={locked ? 'Complete Aadhaar e-KYC to unlock' : undefined}
-        className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all text-xs ${
+        className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[13px] transition-all ${
           activeTab === id
-            ? 'bg-paper-rust text-white font-bold shadow-offset-sm'
+            ? 'border-paper-rust/30 bg-paper-rust/10 text-paper-rust font-semibold'
             : locked
-              ? 'text-paper-muted/50 cursor-not-allowed'
-              : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
+              ? 'border-transparent text-paper-muted/45 cursor-not-allowed'
+              : 'border-transparent text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
         }`}
       >
         {icon}
@@ -273,15 +272,13 @@ export function App() {
     );
   };
 
-  const role = (currentUser?.role || '').toUpperCase();
   const isLocked = !currentUser;
   const isKycLocked = Boolean(currentUser) && !aadhaarChecking && !isKycComplete;
 
-  return (
-    <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
-      {/* Locked Authentication Gate */}
-      <AnimatePresence>
-        {isLocked && (
+  if (isLocked) {
+    return (
+      <div className="min-h-[100dvh] bg-paper-bg text-paper-ink font-body selection:bg-paper-rust selection:text-white">
+        <AnimatePresence>
           <UserAuthGate
             walletAddress={walletAddress}
             isConnected={isConnected}
@@ -289,9 +286,13 @@ export function App() {
             onDisconnectWallet={handleLogout}
             onAuthenticateSuccess={handleAuthenticateSuccess}
           />
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
+    );
+  }
 
+  return (
+    <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
       {/* Mandatory Aadhaar e-KYC Gate (after sign-in) */}
       <AnimatePresence>
         {aadhaarChecking && currentUser && (
@@ -321,6 +322,7 @@ export function App() {
       <Navbar
         walletAddress={walletAddress}
         isConnected={isConnected && !isLocked}
+        userRole={currentUser?.role}
         onConnectWallet={handleConnectWallet}
         onLogout={handleLogout}
         aadhaarStatus={aadhaarStatus}
@@ -328,88 +330,57 @@ export function App() {
       />
 
       {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
         {/* Navigation Workspace Ribbon */}
-        <div className="bg-paper-card border border-paper-border p-1.5 shadow-offset-sm rounded-sm space-y-2">
-          <div className="flex flex-wrap gap-1 font-heading text-xs font-semibold px-1 pt-1">
-            <span className="text-[10px] uppercase tracking-wider text-paper-muted self-center px-2">
-              Workspace
-            </span>
+        <div className="bg-paper-card/80 border border-paper-border rounded-lg p-1.5">
+            <nav className="flex flex-wrap gap-1 font-heading font-medium" aria-label="Workspace navigation">
 
-            {tabBtn(
-              'lawyer-ws',
-              <FileText size={15} weight="bold" />,
-              'Documents',
-              true
-            )}
+              {tabBtn(
+                'lawyer-ws',
+                <FileText size={14} weight="bold" />,
+                'Documents',
+                true
+              )}
 
-            {tabBtn(
-              'judge-ws',
-              <Gavel size={15} weight="bold" />,
-              'Orders',
-              true
-            )}
+              {tabBtn(
+                'judge-ws',
+                <Gavel size={14} weight="bold" />,
+                'Orders',
+                true
+              )}
 
-            {tabBtn(
-              'client-ws',
-              <User size={15} weight="bold" />,
-              'My Vault',
-              true
-            )}
+              {tabBtn(
+                'client-ws',
+                <User size={14} weight="bold" />,
+                'My vault',
+                true
+              )}
 
-            {tabBtn(
-              'auth',
-              <ShieldCheck size={15} weight="bold" />,
-              'Audit Trail'
-            )}
-          </div>
+              {tabBtn(
+                'auth',
+                <ShieldCheck size={14} weight="bold" />,
+                'Audit'
+              )}
 
-          <div className="flex flex-wrap gap-1 font-heading text-xs font-semibold border-t border-paper-border/60 px-1 pt-2">
-            <span className="text-[10px] uppercase tracking-wider text-paper-muted self-center px-2">
-              Tools
-            </span>
+              {tabBtn(
+                'classifier',
+                <Sparkle size={14} weight="bold" />,
+                'Classify',
+                true
+              )}
 
-            {tabBtn(
-              'classifier',
-              <Sparkle size={15} weight="bold" />,
-              'AI Classify',
-              true
-            )}
+              {tabBtn(
+                'ecourts',
+                <Scales size={14} weight="bold" />,
+                'Cases'
+              )}
 
-            {tabBtn(
-              'ecourts',
-              <Scales size={15} weight="bold" />,
-              'Cases'
-            )}
-
-            {tabBtn(
-              'aadhaar',
-              <Fingerprint size={15} weight="bold" />,
-              'Identity'
-            )}
-          </div>
-
-          {role && (
-            <div className="flex items-center justify-between px-3 pb-1 border-t border-paper-border/30 pt-1.5">
-              <p className="text-[10px] text-paper-muted font-body">
-                Authenticated Identity:{' '}
-                <span className="font-bold text-paper-rust">
-                  {currentUser?.name || 'Authorized User'}
-                </span>{' '}
-                (<span className="font-mono text-paper-ink">{role}</span>)
-              </p>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="text-[10px] font-mono text-paper-muted hover:text-paper-rust transition flex items-center space-x-1"
-                title="Lock System & Logout"
-              >
-                <SignOut size={12} weight="bold" />
-                <span>LOCK & LOGOUT</span>
-              </button>
-            </div>
-          )}
+              {tabBtn(
+                'aadhaar',
+                <Fingerprint size={14} weight="bold" />,
+                'Identity'
+              )}
+            </nav>
         </div>
 
         {/* Tab View Container */}
@@ -468,9 +439,7 @@ export function App() {
             )}
 
             {activeTab === 'client-ws' && isKycComplete && (
-              <ClientDashboard
-                walletAddress={walletAddress}
-              />
+              <ClientDashboard />
             )}
           </motion.div>
         </AnimatePresence>

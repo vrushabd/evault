@@ -23,8 +23,8 @@ export default {
         }
       },
       fontFamily: {
-        heading: ['Manrope', 'DM Sans', 'sans-serif'],
-        body: ['DM Sans', 'sans-serif'],
+        heading: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
       },
       spacing: {
@@ -34,10 +34,10 @@ export default {
         '12': '48px',
       },
       boxShadow: {
-        'offset-sm': '2px 2px 0px 0px rgb(var(--paper-border-dark))',
-        'offset': '3px 3px 0px 0px rgb(var(--paper-border-dark))',
-        'offset-lg': '5px 5px 0px 0px rgb(var(--paper-border-dark))',
-        'offset-rust': '3px 3px 0px 0px rgb(var(--paper-rust))',
+        'offset-sm': '0 1px 2px 0 rgb(24 24 27 / 0.06)',
+        'offset': '0 1px 3px 0 rgb(24 24 27 / 0.08)',
+        'offset-lg': '0 4px 12px 0 rgb(24 24 27 / 0.08)',
+        'offset-rust': '0 1px 3px 0 rgb(var(--paper-rust) / 0.25)',
       }
     },
   },
