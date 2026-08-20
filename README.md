@@ -8,38 +8,49 @@
 
 ## About The Project
 
-**eVault** was engineered to address critical challenges in the legal sector, specifically designed for use cases under the Ministry of Law & Justice and the Smart India Hackathon (SIH). 
+**eVault** is a microservices-based functional prototype engineered to address critical data integrity and privacy challenges in the legal sector. It was specifically designed to fulfill the requirements of the Ministry of Law & Justice under the Smart India Hackathon (SIH). 
 
-The platform provides a highly secure ecosystem where:
-- **Lawyers** can securely file encrypted legal documents.
-- **Judges** can register official judicial orders against specific case IDs.
-- **Citizens** can securely retrieve authorized records.
-- **Administrators and Auditors** can review an immutable audit trail of all sensitive system actions.
+The platform provides a highly secure, multi-stakeholder ecosystem that completely isolates document storage from metadata verification:
+- **Lawyers** can securely file, classify, and encrypt legal documents, subsequently granting time-bounded access to specific individuals.
+- **Judges** operate in a dedicated workspace to register official, sealed judicial orders directly against active case IDs.
+- **Citizens / Clients** can seamlessly retrieve their authorized records and independently verify that no tampering has occurred.
+- **Administrators and Auditors** have access to an immutable-style audit trail of all sensitive system actions (uploads, downloads, shares, and verifications).
 
-By combining the immutability of the Ethereum blockchain with the decentralized storage capabilities of IPFS and military-grade AES-256-GCM encryption, eVault guarantees that legal documents cannot be lost, disputed, or accessed without explicit cryptographic authorization.
+By combining the immutability of the Ethereum blockchain (via the Sepolia testnet) with the decentralized storage capabilities of IPFS (Pinata) and military-grade AES-256-GCM encryption, eVault guarantees that legal documents cannot be lost, disputed, or accessed without explicit cryptographic authorization.
 
 ### The Problem vs. Our Approach
 
 | Industry Problem | The eVault Solution |
 |------------------|---------------------|
-| **Lost or disputed case files** | SHA-256 integrity hashing combined with Ethereum (Sepolia) metadata registration. |
-| **Informal and insecure sharing** (Email, USB) | Wallet-based JWT authentication and explicit cryptographic access grants. |
-| **Data privacy of legal PDFs** | AES-256-GCM encryption before upload; IPFS stores **ciphertext only**. |
-| **Siloed court systems** | Built-in case registry and APIs designed for seamless eCourts and CMS integration. |
+| **Lost or disputed case files** | SHA-256 integrity hashing combined with Ethereum (Sepolia) metadata registration. Any tampering breaks the hash match. |
+| **Informal and insecure sharing** (Email, USB) | Wallet-based JWT authentication and explicit on-chain cryptographic access grants. |
+| **Data privacy of legal PDFs** | AES-256-GCM server-side encryption before upload; IPFS stores **ciphertext only**. |
+| **Siloed court systems** | Built-in SQLite/FastAPI case registry and APIs designed for seamless eCourts and CMS integration. |
 
-> **Crucial Design Rule:** PDF documents and plaintext data *never* touch the blockchain. The blockchain exclusively holds the content identifier (CID), case ID, document type, and integrity metadata.
+> **Crucial Design Rule:** PDF documents and plaintext bytes *never* touch the blockchain. The blockchain exclusively holds the content identifier (CID), case ID, document type, timestamps, role permissions, and integrity metadata.
+
+---
+
+## Stakeholders and Core Workflows
+
+The system is designed around explicit user roles enforced both at the API gateway layer and on the `eVault.sol` smart contract:
+
+1. **Secure File Upload:** A lawyer uploads a PDF. The system classifies it, encrypts it, pins the ciphertext to IPFS, registers the metadata on the blockchain, logs it in MySQL, and generates an audit trail.
+2. **Authorized Retrieval:** An authorized wallet requests the document. The system verifies JWT authorization before decrypting and serving the PDF.
+3. **Secure Sharing:** The document owner grants time-bounded access to another wallet address.
+4. **Zero-Knowledge Verification:** Any user can verify document integrity by comparing the MySQL metadata against the immutable Sepolia state without decrypting or viewing the actual PDF.
 
 ---
 
 ## Core Features
 
-- **Encrypted Lawyer Filing** — Documents are encrypted client-side, pinned to IPFS, and metadata is registered on the Sepolia testnet before granting specific access.
-- **Dedicated Judge Workspace** — A specialized interface for the judiciary to register orders directly against specific case IDs.
-- **Secure Citizen Vault** — Allows end-users to load their cases by ID, verify document integrity mathematically, and authorize downloads.
-- **Immutable Audit Trail** — Every upload, share, download, and verification event is securely logged.
-- **Identity Commitment** — Advanced wallet binding that verifies identity without storing raw sensitive information (like Aadhaar numbers) in the vault database.
-- **Intelligent Case Registry** — An eCourts-style case list for streamlined filing and alignment.
-- **AI Document Classifier** — Assists with automatic document typing prior to secure upload.
+- **Encrypted Lawyer Filing** — Documents are encrypted server-side with AES-256-GCM before being pinned to IPFS. The metadata is registered on the Sepolia testnet to establish an immutable timeline.
+- **Dedicated Judge Workspace** — A specialized, authenticated interface for the judiciary to register orders directly against specific case IDs within the vault.
+- **Secure Citizen Vault** — Allows end-users to load their specific cases by ID, verify document integrity mathematically, and securely download files they have been granted access to.
+- **Immutable Audit Trail** — A dedicated Spring Boot microservice logs every upload, share, download, denial, and verification event for absolute accountability.
+- **Privacy-Preserving Identity Commitment** — Advanced wallet binding that verifies a user's identity using HMAC-based commitments. This ensures verified identity without ever storing raw sensitive Aadhaar or PII in the vault database.
+- **Intelligent Case Registry** — An eCourts-style case list for streamlined filing and alignment, bridging the gap between blockchain storage and traditional court management systems.
+- **AI Document Classifier** — Automatically assists with document typing and classification prior to secure upload, ensuring metadata remains clean and standardized.
 
 ---
 
@@ -71,7 +82,7 @@ The application is built on a robust, microservices-driven architecture.
 | **Blockchain** | `8083` | Node.js, ethers.js |
 | **Audit** | `8084` | Spring Boot, Java |
 | **Notifications**| `8085` | Spring Boot, Java |
-| **Integration** | `8086` | FastAPI, Python |
+| **Integration** | `8086` | FastAPI, Python, SQLite |
 
 ---
 
@@ -79,12 +90,12 @@ The application is built on a robust, microservices-driven architecture.
 
 The security of the documents is the primary focus of eVault. The flow ensures zero-knowledge storage:
 
-1. **Encryption:** The PDF is encrypted with AES-256-GCM. A per-document key is generated via HKDF from the `ENCRYPTION_MASTER_KEY`.
-2. **Storage:** The ciphertext is pinned to IPFS, returning a unique CID.
-3. **Registration:** The CID and file hash are registered on the Sepolia network via the `eVault.sol` smart contract.
-4. **Metadata Management:** Metadata is stored in a MySQL database. *The AES key is never stored in the database*, only a version reference.
-5. **Authorization:** Downloads are only permitted after strict JWT authorization (limited to the uploader or an explicitly granted wallet).
-6. **Verification:** System verifies document integrity by comparing the MySQL record against the blockchain state **without** needing to decrypt the PDF.
+1. **Encryption:** The PDF is encrypted with AES-256-GCM. A per-document key is derived via HKDF-SHA256 from the server's `ENCRYPTION_MASTER_KEY` combined with a unique version reference.
+2. **Storage:** The resulting ciphertext is pinned to IPFS, which returns a unique CID.
+3. **Registration:** The CID and the SHA-256 file hash of the plaintext are registered on the Sepolia network via the `eVault.sol` smart contract.
+4. **Metadata Management:** Metadata is securely stored in a MySQL database. *The AES key is never stored in the database*, only the `encryption_key_reference`.
+5. **Authorization:** Downloads are only permitted after strict JWT authorization (the requester must be the original uploader or hold a valid `DocumentAccess` grant).
+6. **Verification:** The system verifies document integrity by comparing the MySQL metadata record against the blockchain state **without** needing to decrypt or download the actual PDF payload.
 
 ---
 
