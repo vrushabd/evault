@@ -76,16 +76,8 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
 
     try {
       advanceStep('encrypt');
-      let classifyRes = { data: null };
-      try {
-         classifyRes = await api.classifyDocument(selectedFile);
-      } catch {
-        /* optional */
-      }
-      
-      const predictedType = classifyRes.data?.documentType || docType;
       advanceStep('ipfs');
-      const uploadRes = await api.uploadDocument(selectedFile, caseId.trim(), predictedType);
+      const uploadRes = await api.uploadDocument(selectedFile, cleanCaseId, docType);
 
       advanceStep('chain');
       advanceStep('meta');
@@ -103,7 +95,6 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
         keyVersion: uploadRes.key_version,
         uploadedBy: uploadRes.uploaded_by || walletAddress || displayName,
         createdAt: uploadRes.created_at,
-        classification: classifyRes.data || { documentType: predictedType },
       });
     } catch (err) {
       setUploadStep(null);

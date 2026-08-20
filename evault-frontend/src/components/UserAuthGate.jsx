@@ -103,9 +103,12 @@ export function UserAuthGate({
       // Step 1: Check registered accounts registry
       const storedAccountsStr = localStorage.getItem('evault-registered-accounts');
       const accounts = storedAccountsStr ? JSON.parse(storedAccountsStr) : [];
+      const cleanEmail = loginEmail.trim().toLowerCase();
       
       const foundAccount = accounts.find(
-        (acc) => acc.email?.toLowerCase() === loginEmail.trim().toLowerCase()
+        (acc) => acc.email?.trim().toLowerCase() === cleanEmail
+      ) || accounts.find(
+        (acc) => walletAddress && acc.walletAddress?.toLowerCase() === walletAddress.toLowerCase()
       );
 
       let user = null;
@@ -118,8 +121,8 @@ export function UserAuthGate({
         user = {
           walletAddress: walletAddress || foundAccount.walletAddress || '0xDemoWallet',
           name: foundAccount.name,
-          email: foundAccount.email,
-          role: foundAccount.role || 'LAWYER',
+          email: foundAccount.email || loginEmail.trim(),
+          role: foundAccount.role || localStorage.getItem('evault-role') || 'LAWYER',
           barNumber: foundAccount.barNumber || null,
           courtName: foundAccount.courtName || null,
           policeId: foundAccount.policeId || null,

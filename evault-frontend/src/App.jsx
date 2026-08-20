@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import ClassifierModule from './components/ClassifierModule';
 import ECourtsLookup from './components/ECourtsLookup';
 import AadhaarBinding from './components/AadhaarBinding';
 import AuthAndAuditModule from './components/AuthAndAuditModule';
@@ -12,7 +11,6 @@ import AadhaarKycGate from './components/AadhaarKycGate';
 import api from './services/api';
 
 import {
-  Sparkle,
   Scales,
   Fingerprint,
   ShieldCheck,
@@ -24,7 +22,7 @@ import {
 
 import { AnimatePresence, motion } from 'framer-motion';
 
-const DOCUMENT_SERVICE_TABS = new Set(['lawyer-ws', 'judge-ws', 'client-ws', 'classifier']);
+const DOCUMENT_SERVICE_TABS = new Set(['lawyer-ws', 'judge-ws', 'client-ws']);
 
 const roleDefaultTab = (userRole) => {
   const role = (userRole || '').toUpperCase();
@@ -41,14 +39,14 @@ const getRoleAllowedTabs = (userRole) => {
     return new Set(['client-ws', 'auth']);
   }
   if (role === 'JUDGE') {
-    // Judge has access to all remaining functionalities (Orders, Documents, My Vault, Audit, Classify, Cases, Identity), but CANNOT create cases (enforced in ECourtsLookup)
-    return new Set(['judge-ws', 'lawyer-ws', 'client-ws', 'auth', 'classifier', 'ecourts', 'aadhaar']);
+    // Judge has access to Orders, Documents, My Vault, Audit, Cases, Identity
+    return new Set(['judge-ws', 'lawyer-ws', 'client-ws', 'auth', 'ecourts', 'aadhaar']);
   }
   if (role === 'POLICE' || role === 'LAWYER') {
-    // Lawyer & Police have access to Documents, Cases (with Create Case), Classify, Audit, Identity, My Vault
-    return new Set(['lawyer-ws', 'ecourts', 'classifier', 'auth', 'aadhaar', 'client-ws']);
+    // Lawyer & Police have access to Documents, Cases (with Create Case), Audit, Identity, My Vault
+    return new Set(['lawyer-ws', 'ecourts', 'auth', 'aadhaar', 'client-ws']);
   }
-  return new Set(['lawyer-ws', 'client-ws', 'auth', 'classifier', 'ecourts', 'aadhaar']);
+  return new Set(['lawyer-ws', 'client-ws', 'auth', 'ecourts', 'aadhaar']);
 };
 
 export function App() {
@@ -96,17 +94,11 @@ export function App() {
       setIsConnected(true);
       const restoredUser = {
         walletAddress: savedWallet,
-        role: savedRole || 'CLIENT',
+        role: savedRole || 'LAWYER',
         name: savedName || `${savedWallet.substring(0, 10)}…`,
       };
       setCurrentUser(restoredUser);
       setActiveTab(roleDefaultTab(savedRole));
-
-      api.getUserRole(savedWallet).then((r) => {
-        if (r && r !== savedRole) {
-          applyRoleToUser(savedWallet, r);
-        }
-      }).catch(console.warn);
     }
   }, []);
 
@@ -401,14 +393,6 @@ export function App() {
                 'Audit'
               )}
 
-              {/* LAWYER / POLICE / JUDGE: AI Classifier Tab */}
-              {tabBtn(
-                'classifier',
-                <Sparkle size={14} weight="bold" />,
-                'Classify',
-                true
-              )}
-
               {/* LAWYER / POLICE / JUDGE: Cases / eCourts Registry Tab */}
               {tabBtn(
                 'ecourts',
@@ -434,15 +418,6 @@ export function App() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
           >
-            {activeTab === 'classifier' && isKycComplete && (
-              <ClassifierModule
-                onSecureDocument={(meta) => {
-                  setFilingPrefill(meta);
-                  setActiveTab('lawyer-ws');
-                }}
-              />
-            )}
-
             {activeTab === 'ecourts' && (
               <ECourtsLookup currentUser={currentUser} />
             )}

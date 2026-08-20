@@ -16,7 +16,6 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       // Proxy API through Vite to microservices so the browser never hits cross-origin CORS
       proxy: {
-        '/classify': { target: integrationService, changeOrigin: true },
         '/ecourts': { target: integrationService, changeOrigin: true },
         '/aadhaar': { target: integrationService, changeOrigin: true },
         '/api/documents': { target: docService, changeOrigin: true },

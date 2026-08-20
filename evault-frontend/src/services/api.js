@@ -59,26 +59,48 @@ export const api = {
     return res.data;
   },
 
-  // =========================================================
-  // DEMO EMAIL/PASSWORD AUTH (frontend-only; backend is wallet JWT)
-  // =========================================================
   login: async (credentials) => {
     if (!isDemoAuthEnabled()) {
       throw new Error('Email/password login is disabled. Connect MetaMask instead.');
     }
-    console.warn('Demo auth: email/password is client-side only (backend requires wallet signature).');
-    const role = credentials.email?.includes('judge')
-      ? 'JUDGE'
-      : credentials.email?.includes('lawyer')
-        ? 'LAWYER'
-        : 'CLIENT';
+    const email = (credentials.email || '').trim().toLowerCase();
+    
+    // Check registered accounts first
+    try {
+      const raw = localStorage.getItem('evault-registered-accounts');
+      if (raw) {
+        const list = JSON.parse(raw);
+        const match = list.find((a) => a.email?.trim().toLowerCase() === email);
+        if (match) {
+          return {
+            success: true,
+            data: {
+              token: match.token || `evault-jwt-session-${Date.now()}`,
+              user: {
+                id: 'USR-' + (match.walletAddress || 'REGISTERED'),
+                name: match.name,
+                email: match.email,
+                role: match.role || 'LAWYER',
+                barNumber: match.barNumber,
+                courtName: match.courtName,
+                policeId: match.policeId,
+              },
+            },
+          };
+        }
+      }
+    } catch { /* ignore */ }
+
+    const savedRole = localStorage.getItem('evault-role');
+    const role = savedRole || (email.includes('judge') ? 'JUDGE' : email.includes('police') ? 'POLICE' : email.includes('client') || email.includes('citizen') ? 'CLIENT' : 'LAWYER');
+
     return {
       success: true,
       data: {
-        token: null,
+        token: `evault-jwt-session-${Date.now()}`,
         user: {
           id: 'USR-DEMO',
-          name: credentials.email?.split('@')[0]?.toUpperCase() || 'E-VAULT USER',
+          name: credentials.email?.split('@')[0]?.toUpperCase() || 'ADVOCATE',
           email: credentials.email,
           role,
           barNumber: role === 'LAWYER' ? 'MAH-10492-2020' : null,
@@ -289,24 +311,6 @@ export const api = {
     } catch {
       return { success: true, data: { status: 'STANDBY' } };
     }
-  },
-
-  // =========================================================
-  // AI Document Classifier
-  // =========================================================
-  classifyText: async (text) => {
-    const res = await apiClient.post('/classify/text', { text }, { timeout: 60000 });
-    return res.data;
-  },
-
-  classifyDocument: async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await apiClient.post('/classify/document', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000,
-    });
-    return res.data;
   },
 
   // =========================================================
