@@ -8,6 +8,7 @@ import JudgeDashboard from './components/JudgeDashboard';
 import LawyerDashboard from './components/LawyerDashboard';
 import ClientDashboard from './components/ClientDashboard';
 import UserAuthGate from './components/UserAuthGate';
+import AadhaarKycGate from './components/AadhaarKycGate';
 import api from './services/api';
 
 import {
@@ -24,20 +25,45 @@ import {
 
 import { AnimatePresence, motion } from 'framer-motion';
 
+const DOCUMENT_SERVICE_TABS = new Set(['lawyer-ws', 'judge-ws', 'client-ws', 'classifier']);
+
+const roleDefaultTab = (userRole) => {
+  if (userRole === 'JUDGE') return 'judge-ws';
+  if (userRole === 'CITIZEN' || userRole === 'CLIENT') return 'client-ws';
+  return 'lawyer-ws';
+};
+
 export function App() {
   const [activeTab, setActiveTab] = useState('lawyer-ws');
   const [walletAddress, setWalletAddress] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [aadhaarStatus, setAadhaarStatus] = useState(null);
+  const [aadhaarChecking, setAadhaarChecking] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [filingPrefill, setFilingPrefill] = useState(null);
 
-  // Check identity binding when wallet address changes
-  useEffect(() => {
-    if (walletAddress) {
-      checkWalletAadhaarBinding(walletAddress);
+  const isKycComplete = aadhaarStatus?.isBound === true;
+
+  const checkWalletAadhaarBinding = async (addr) => {
+    setAadhaarChecking(true);
+    try {
+      const res = await api.verifyAadhaar(addr);
+      if (res.success) {
+        setAadhaarStatus(res.data);
+        return res.data;
+      }
+      const unbound = { wallet: addr, isBound: false };
+      setAadhaarStatus(unbound);
+      return unbound;
+    } catch (e) {
+      console.warn('Could not verify wallet identity binding:', e);
+      const unbound = { wallet: addr, isBound: false };
+      setAadhaarStatus(unbound);
+      return unbound;
+    } finally {
+      setAadhaarChecking(false);
     }
-  }, [walletAddress]);
+  };
 
   // Restore existing authenticated session from localStorage
   useEffect(() => {
@@ -47,6 +73,7 @@ export function App() {
     const savedName = localStorage.getItem('evault-name');
 
     if (token && savedWallet) {
+      setAadhaarChecking(true);
       setWalletAddress(savedWallet);
       setIsConnected(true);
       const restoredUser = {
@@ -56,12 +83,10 @@ export function App() {
       };
       setCurrentUser(restoredUser);
 
-      // Set default tab based on restored role
       if (savedRole === 'JUDGE') setActiveTab('judge-ws');
       else if (savedRole === 'CITIZEN' || savedRole === 'CLIENT') setActiveTab('client-ws');
       else setActiveTab('lawyer-ws');
 
-      // Refresh role in background if available
       api.getUserRole(savedWallet).then((r) => {
         if (r && r !== savedRole) {
           applyRoleToUser(savedWallet, r);
@@ -70,16 +95,20 @@ export function App() {
     }
   }, []);
 
-  const checkWalletAadhaarBinding = async (addr) => {
-    try {
-      const res = await api.verifyAadhaar(addr);
-      if (res.success) {
-        setAadhaarStatus(res.data);
-      }
-    } catch (e) {
-      console.warn('Could not verify wallet identity binding:', e);
+  // Check identity binding when wallet address changes
+  useEffect(() => {
+    if (walletAddress) {
+      checkWalletAadhaarBinding(walletAddress);
     }
-  };
+  }, [walletAddress]);
+
+  // Redirect away from document tabs when KYC is incomplete
+  useEffect(() => {
+    if (!currentUser || aadhaarChecking) return;
+    if (!isKycComplete && DOCUMENT_SERVICE_TABS.has(activeTab)) {
+      setActiveTab('aadhaar');
+    }
+  }, [currentUser, aadhaarChecking, isKycComplete, activeTab]);
 
   const applyRoleToUser = (address, role, fallbackRole = 'CLIENT') => {
     const resolved = typeof role === 'string' && role ? role : fallbackRole;
@@ -105,6 +134,7 @@ export function App() {
     setIsConnected(false);
     setCurrentUser(null);
     setAadhaarStatus(null);
+    setAadhaarChecking(false);
     setFilingPrefill(null);
 
     console.log('eVault session cleared. System locked.');
@@ -130,46 +160,67 @@ export function App() {
     }
   };
 
-  const handleAuthenticateSuccess = (userData) => {
+  const handleAuthenticateSuccess = async (userData) => {
     setCurrentUser(userData);
     setIsConnected(true);
     setWalletAddress(userData.walletAddress);
 
-    // Automatically navigate to the role's appropriate workspace
-    const userRole = (userData.role || '').toUpperCase();
-    if (userRole === 'JUDGE') {
-      setActiveTab('judge-ws');
-    } else if (userRole === 'CITIZEN' || userRole === 'CLIENT') {
-      setActiveTab('client-ws');
-    } else {
-      setActiveTab('lawyer-ws');
-    }
+    const status = userData.walletAddress
+      ? await checkWalletAadhaarBinding(userData.walletAddress)
+      : null;
 
-    if (userData.walletAddress) {
-      checkWalletAadhaarBinding(userData.walletAddress);
+    const userRole = (userData.role || '').toUpperCase();
+    if (status?.isBound) {
+      setActiveTab(roleDefaultTab(userRole));
+    } else {
+      setActiveTab('aadhaar');
     }
   };
 
-  const tabBtn = (id, icon, label) => (
-    <button
-      key={id}
-      type="button"
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all text-xs ${
-        activeTab === id
-          ? 'bg-paper-rust text-white font-bold shadow-offset-sm'
-          : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
+  const handleKycSuccess = async () => {
+    if (!walletAddress) return;
+    const status = await checkWalletAadhaarBinding(walletAddress);
+    if (status?.isBound) {
+      const userRole = (currentUser?.role || '').toUpperCase();
+      setActiveTab(roleDefaultTab(userRole));
+    }
+  };
+
+  const handleTabChange = (tabId) => {
+    if (DOCUMENT_SERVICE_TABS.has(tabId) && !isKycComplete) {
+      setActiveTab('aadhaar');
+      return;
+    }
+    setActiveTab(tabId);
+  };
+
+  const tabBtn = (id, icon, label, requiresKyc = false) => {
+    const locked = requiresKyc && !isKycComplete;
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => handleTabChange(id)}
+        disabled={locked}
+        title={locked ? 'Complete Aadhaar e-KYC to unlock' : undefined}
+        className={`flex items-center space-x-2 px-3.5 py-2 rounded-sm transition-all text-xs ${
+          activeTab === id
+            ? 'bg-paper-rust text-white font-bold shadow-offset-sm'
+            : locked
+              ? 'text-paper-muted/50 cursor-not-allowed'
+              : 'text-paper-muted hover:text-paper-ink hover:bg-paper-surface'
+        }`}
+      >
+        {icon}
+        <span>{label}</span>
+        {locked && <Lock size={12} weight="bold" className="opacity-60" />}
+      </button>
+    );
+  };
 
   const role = (currentUser?.role || '').toUpperCase();
-
-  // If the user has not authenticated, display the mandatory Locking Authentication Portal
   const isLocked = !currentUser;
+  const isKycLocked = Boolean(currentUser) && !aadhaarChecking && !isKycComplete;
 
   return (
     <div className="min-h-[100dvh] bg-paper-bg text-paper-ink flex flex-col font-body selection:bg-paper-rust selection:text-white">
@@ -182,6 +233,31 @@ export function App() {
             onConnectWallet={handleConnectWallet}
             onDisconnectWallet={handleLogout}
             onAuthenticateSuccess={handleAuthenticateSuccess}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mandatory Aadhaar e-KYC Gate (after sign-in) */}
+      <AnimatePresence>
+        {aadhaarChecking && currentUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[85] bg-paper-bg/80 backdrop-blur-sm flex items-center justify-center"
+          >
+            <div className="flex items-center gap-3 text-sm text-paper-muted font-body">
+              <Fingerprint size={22} weight="bold" className="text-paper-rust animate-pulse" />
+              <span>Verifying Aadhaar identity status…</span>
+            </div>
+          </motion.div>
+        )}
+        {isKycLocked && (
+          <AadhaarKycGate
+            walletAddress={walletAddress}
+            isConnected={isConnected}
+            userName={currentUser?.name}
+            onBindingSuccess={handleKycSuccess}
           />
         )}
       </AnimatePresence>
@@ -207,19 +283,22 @@ export function App() {
             {tabBtn(
               'lawyer-ws',
               <FileText size={15} weight="bold" />,
-              'Documents'
+              'Documents',
+              true
             )}
 
             {tabBtn(
               'judge-ws',
               <Gavel size={15} weight="bold" />,
-              'Orders'
+              'Orders',
+              true
             )}
 
             {tabBtn(
               'client-ws',
               <User size={15} weight="bold" />,
-              'My Vault'
+              'My Vault',
+              true
             )}
 
             {tabBtn(
@@ -237,7 +316,8 @@ export function App() {
             {tabBtn(
               'classifier',
               <Sparkle size={15} weight="bold" />,
-              'AI Classify'
+              'AI Classify',
+              true
             )}
 
             {tabBtn(
@@ -285,7 +365,7 @@ export function App() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
           >
-            {activeTab === 'classifier' && (
+            {activeTab === 'classifier' && isKycComplete && (
               <ClassifierModule
                 onSecureDocument={(meta) => {
                   setFilingPrefill(meta);
@@ -302,9 +382,10 @@ export function App() {
               <AadhaarBinding
                 walletAddress={walletAddress}
                 isConnected={isConnected}
-                onBindingSuccess={() =>
-                  checkWalletAadhaarBinding(walletAddress)
-                }
+                onBindingSuccess={() => {
+                  checkWalletAadhaarBinding(walletAddress);
+                  handleKycSuccess();
+                }}
               />
             )}
 
@@ -316,13 +397,13 @@ export function App() {
               />
             )}
 
-            {activeTab === 'judge-ws' && (
+            {activeTab === 'judge-ws' && isKycComplete && (
               <JudgeDashboard
                 currentUser={currentUser}
               />
             )}
 
-            {activeTab === 'lawyer-ws' && (
+            {activeTab === 'lawyer-ws' && isKycComplete && (
               <LawyerDashboard
                 currentUser={currentUser}
                 walletAddress={walletAddress}
@@ -330,7 +411,7 @@ export function App() {
               />
             )}
 
-            {activeTab === 'client-ws' && (
+            {activeTab === 'client-ws' && isKycComplete && (
               <ClientDashboard
                 walletAddress={walletAddress}
               />

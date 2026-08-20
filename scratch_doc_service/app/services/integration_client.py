@@ -42,6 +42,28 @@ class IntegrationClient:
                 logger.warning(f"Could not register case with integration service: {e}")
         return None
 
+    async def is_aadhaar_bound(self, wallet_address: str) -> bool:
+        """Check whether the wallet has completed Aadhaar identity binding."""
+        if not wallet_address:
+            return False
+
+        url = f"{self.base_url}/aadhaar/verify/{wallet_address}"
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, timeout=5.0)
+                if response.status_code == 200:
+                    body = response.json()
+                    if body.get("success"):
+                        return bool(body.get("data", {}).get("isBound"))
+                logger.warning(
+                    "Aadhaar verify returned %s for wallet %s",
+                    response.status_code,
+                    wallet_address[:10],
+                )
+            except Exception as e:
+                logger.warning(f"Could not verify Aadhaar binding: {e}")
+        return False
+
     async def classify_document(self, doc_id: str, case_id: str, text_content: str) -> Optional[Dict[str, Any]]:
         if not self.enabled:
             return None

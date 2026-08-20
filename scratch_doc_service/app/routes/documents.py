@@ -7,6 +7,7 @@ import jwt
 from app.config.settings import settings
 from app.database.database import get_db
 from app.services.document_service import DocumentService
+from app.services.integration_client import IntegrationClient
 from app.schemas.document import DocumentResponse
 from app.schemas.share import DocumentShareRequest, DocumentShareResponse
 from app.schemas.verification import VerificationResponse
@@ -58,6 +59,34 @@ async def get_current_user(request: Request):
         if allow_mock:
             return {"wallet_address": "0xMockUserWalletAddress", "role": "USER"}
         raise HTTPException(status_code=401, detail={"success": False, "error": "Invalid token"})
+
+async def require_aadhaar_kyc(user: dict = Depends(get_current_user)):
+    if not settings.require_aadhaar_kyc:
+        return user
+
+    wallet = user.get("wallet_address")
+    if not wallet:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "success": False,
+                "error": "Aadhaar e-KYC required before using document services",
+                "code": "AADHAAR_KYC_REQUIRED",
+            },
+        )
+
+    integration = IntegrationClient()
+    if not await integration.is_aadhaar_bound(wallet):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "success": False,
+                "error": "Complete Aadhaar e-KYC identity verification before using document services",
+                "code": "AADHAAR_KYC_REQUIRED",
+            },
+        )
+    return user
+
 
 async def check_case_participant(
     request: Request,
@@ -208,7 +237,7 @@ async def validate_pdf(file: UploadFile):
     if first_bytes != b'%PDF':
         raise HTTPException(status_code=400, detail={"success": False, "error": "File is not a valid PDF"})
 
-@router.post("/upload", response_model=DocumentResponse)
+@router.post("/upload", response_model=DocumentResponse, dependencies=[Depends(require_aadhaar_kyc)])
 async def upload_document(
     request: Request,
     file: UploadFile = File(...),
@@ -264,7 +293,7 @@ async def upload_document(
     except Exception as e:
         handle_service_error(e)
 
-@router.get("/{docId}", dependencies=[Depends(check_case_participant)])
+@router.get("/{docId}", dependencies=[Depends(require_aadhaar_kyc), Depends(check_case_participant)])
 async def get_document(docId: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     uploader_wallet = user.get("wallet_address")
     doc_service = DocumentService(db)
@@ -283,13 +312,13 @@ async def get_document(docId: str, user: dict = Depends(get_current_user), db: A
     except Exception as e:
         handle_service_error(e)
 
-@router.get("/case/{caseId}", response_model=List[DocumentResponse], dependencies=[Depends(check_case_participant)])
+@router.get("/case/{caseId}", response_model=List[DocumentResponse], dependencies=[Depends(require_aadhaar_kyc), Depends(check_case_participant)])
 async def get_case_documents(caseId: str, db: AsyncSession = Depends(get_db)):
     doc_service = DocumentService(db)
     docs = await doc_service.get_documents_by_case(caseId)
     return docs
 
-@router.post("/share", response_model=DocumentShareResponse, dependencies=[Depends(check_case_participant)])
+@router.post("/share", response_model=DocumentShareResponse, dependencies=[Depends(require_aadhaar_kyc), Depends(check_case_participant)])
 async def share_document(req: DocumentShareRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     owner_wallet = user.get("wallet_address")
     doc_service = DocumentService(db)
@@ -299,7 +328,7 @@ async def share_document(req: DocumentShareRequest, user: dict = Depends(get_cur
     except Exception as e:
         handle_service_error(e)
 
-@router.delete("/{docId}")
+@router.delete("/{docId}", dependencies=[Depends(require_aadhaar_kyc)])
 async def revoke_document(docId: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     owner_wallet = user.get("wallet_address")
     doc_service = DocumentService(db)
@@ -324,7 +353,7 @@ async def get_versions(docId: str, db: AsyncSession = Depends(get_db)):
     versions = await doc_service.get_document_versions(docId)
     return versions
 
-@router.post("/amend/{docId}", response_model=DocumentResponse, dependencies=[Depends(check_case_participant)])
+@router.post("/amend/{docId}", response_model=DocumentResponse, dependencies=[Depends(require_aadhaar_kyc), Depends(check_case_participant)])
 async def amend_document(docId: str, file: UploadFile = File(...), user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await validate_pdf(file)
     file_bytes = await file.read()

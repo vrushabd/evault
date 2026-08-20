@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # Shared with evault-auth when verifying JWTs (empty = decode without verify, dev only)
     jwt_secret: str = ""
     allow_mock_auth: bool = False
+    require_aadhaar_kyc: bool = True
 
     # 32-byte hex key for AES-GCM
     encryption_master_key: str = ""
