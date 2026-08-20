@@ -237,12 +237,7 @@ export function UserAuthGate({
           courtId: role === 'JUDGE' ? courtName.trim() : undefined,
         });
       } catch (regErr) {
-        const regMsg = regErr.response?.data?.message || regErr.response?.data?.error || regErr.message || '';
-        if (regMsg.toLowerCase().includes('already exists') || regMsg.toLowerCase().includes('duplicate')) {
-          setErrorType('ALREADY_REGISTERED');
-          throw new Error('This Ethereum wallet or email is already registered to an existing account. Please log in instead.');
-        }
-        console.warn('Backend registration note:', regMsg);
+        console.warn('Backend registration note:', regErr?.message || regErr);
       }
 
       // Step 2: Save to registered accounts registry
@@ -264,7 +259,7 @@ export function UserAuthGate({
       };
 
       const updatedAccounts = accounts.filter(
-        (a) => a.email?.toLowerCase() !== email.trim().toLowerCase() && a.walletAddress?.toLowerCase() !== (walletAddress || '').toLowerCase()
+        (a) => a.email?.toLowerCase() !== email.trim().toLowerCase()
       );
       updatedAccounts.push(newAccount);
       localStorage.setItem('evault-registered-accounts', JSON.stringify(updatedAccounts));
@@ -369,7 +364,7 @@ export function UserAuthGate({
 
           <div className="flex items-center space-x-1.5 text-[11px] text-paper-muted">
             <ShieldCheck size={14} weight="bold" className="text-paper-rust" />
-            <span>1 Wallet = 1 Account</span>
+            <span>Encrypted Legal Gateway</span>
           </div>
         </div>
 
