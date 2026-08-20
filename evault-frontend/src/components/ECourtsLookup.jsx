@@ -73,7 +73,18 @@ export function ECourtsLookup({ currentUser }) {
 
   useEffect(() => {
     loadRegisteredCases();
-  }, []);
+    const interval = setInterval(() => {
+      loadRegisteredCases();
+      if (caseData?.caseId) {
+        api.getCaseById(caseData.caseId).then((r) => {
+          if (r?.success && r?.data) {
+            setCaseData((prev) => (prev?.caseId === r.data.caseId ? { ...prev, ...r.data } : prev));
+          }
+        }).catch(() => {});
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [caseData?.caseId]);
 
   const handleSearchCase = async (idToSearch) => {
     const caseId = (idToSearch || searchQuery).trim().toUpperCase();
@@ -251,18 +262,17 @@ export function ECourtsLookup({ currentUser }) {
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'HEARING':
-        return <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">HEARING</span>;
-      case 'RESERVED':
-        return <span className="bg-blue-100 text-blue-900 border border-blue-300 px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">RESERVED</span>;
-      case 'ACTIVE':
-        return <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">ACTIVE</span>;
-      case 'DISPOSED':
-        return <span className="bg-paper-surface text-paper-muted border border-paper-border px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">DISPOSED</span>;
-      default:
-        return <span className="bg-paper-surface text-paper-ink border border-paper-border px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">{status || 'ACTIVE'}</span>;
+    const s = (status || 'ACTIVE').toUpperCase();
+    if (s === 'CLOSED' || s === 'DISPOSED' || s.includes('CLOSED')) {
+      return <span className="bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 px-2.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wider">CLOSED</span>;
     }
+    if (s === 'HEARING') {
+      return <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">HEARING</span>;
+    }
+    if (s === 'RESERVED') {
+      return <span className="bg-blue-100 text-blue-900 border border-blue-300 px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">RESERVED</span>;
+    }
+    return <span className="bg-paper-surface text-paper-rust border border-paper-rust/40 px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase">{s}</span>;
   };
 
   // If Client somehow reaches this tab, show strict access restriction notice

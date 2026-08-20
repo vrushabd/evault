@@ -222,9 +222,8 @@ export const api = {
 
   updateCaseStatus: async (caseId, status = 'CLOSED') => {
     const cleanId = (caseId || '').trim().toUpperCase();
-    let updatedCase = null;
+    let targetCase = null;
 
-    // 1. Update in local storage registry
     try {
       const raw = localStorage.getItem('evault-registered-cases');
       const list = raw ? JSON.parse(raw) : [];
@@ -236,45 +235,62 @@ export const api = {
           disposedDate: new Date().toISOString().split('T')[0],
           updatedAt: new Date().toISOString(),
         };
-        updatedCase = list[idx];
+        targetCase = list[idx];
         localStorage.setItem('evault-registered-cases', JSON.stringify(list));
       }
-    } catch (e) {
-      console.warn('Local case status update error:', e);
-    }
+    } catch (e) {}
 
-    // 2. Sync with backend integration service
+    const payload = targetCase || {
+      caseId: cleanId,
+      status: status.toUpperCase(),
+      disposedDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
-      if (updatedCase) {
-        await apiClient.post('/ecourts/cases', updatedCase, { timeout: 4000 });
-      } else {
-        const existing = await api.getCaseById(cleanId);
-        if (existing?.data) {
-          const patched = {
-            ...existing.data,
-            status: status.toUpperCase(),
-            disposedDate: new Date().toISOString().split('T')[0],
-          };
-          await apiClient.post('/ecourts/cases', patched, { timeout: 4000 });
-          updatedCase = patched;
-        }
+      try {
+        await apiClient.post('/ecourts/cases', payload, { timeout: 4000 });
+      } catch {
+        await axios.post('http://localhost:8086/ecourts/cases', payload, { timeout: 4000 });
       }
     } catch (err) {
       console.warn('Backend case status update note:', err.message);
     }
 
-    return { success: true, data: updatedCase || { caseId: cleanId, status } };
+    return { success: true, data: payload };
   },
 
   getCaseById: async (caseId) => {
     const cleanId = (caseId || '').trim().toUpperCase();
+    let backendCase = null;
+
     try {
-      const res = await apiClient.get(`/ecourts/case/${encodeURIComponent(cleanId)}`);
+      let res;
+      try {
+        res = await apiClient.get(`/ecourts/case/${encodeURIComponent(cleanId)}`);
+      } catch {
+        res = await axios.get(`http://localhost:8086/ecourts/case/${encodeURIComponent(cleanId)}`, { timeout: 4000 });
+      }
       if (res.data?.success && res.data?.data) {
-        return res.data;
+        backendCase = res.data.data;
       }
     } catch {
       /* fallback to local registry */
+    }
+
+    if (backendCase) {
+      try {
+        const raw = localStorage.getItem('evault-registered-cases');
+        const list = raw ? JSON.parse(raw) : [];
+        const idx = list.findIndex((c) => (c.caseId || '').toUpperCase() === cleanId);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...backendCase };
+        } else {
+          list.unshift(backendCase);
+        }
+        localStorage.setItem('evault-registered-cases', JSON.stringify(list));
+      } catch {}
+      return { success: true, data: backendCase };
     }
 
     try {
@@ -284,9 +300,7 @@ export const api = {
         const found = list.find((c) => (c.caseId || '').toUpperCase() === cleanId);
         if (found) return { success: true, data: found };
       }
-    } catch {
-      /* ignore */
-    }
+    } catch {}
 
     throw new Error(`Case record not found in National eCourts: ${cleanId}`);
   },
