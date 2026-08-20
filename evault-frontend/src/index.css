@@ -5,6 +5,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   :root {
     --paper-bg: 252 251 248;
     --paper-surface: 244 242 235;
@@ -20,6 +24,8 @@
   }
 
   html.dark {
+    color-scheme: dark;
+
     --paper-bg: 9 9 11;
     --paper-surface: 24 24 27;
     --paper-card: 39 39 42;

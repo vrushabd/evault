@@ -271,7 +271,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
               </div>
             </div>
 
-            <div className="border-2 border-dashed border-paper-border hover:border-paper-ink p-6 text-center bg-paper-bg transition cursor-pointer relative rounded-lg">
+            <div className="border-2 border-dashed border-paper-border hover:border-paper-ink min-h-[180px] p-10 flex flex-col items-center justify-center text-center bg-paper-bg transition cursor-pointer relative rounded-lg">
               <input
                 type="file"
                 accept=".pdf"
