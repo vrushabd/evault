@@ -95,6 +95,19 @@ export function JudgeDashboard({ currentUser }) {
         hashRegistered: Boolean(txHash || signTx),
         auditRecorded: true,
       });
+
+      api.logAuditEvent({
+        action: 'JUDICIAL_ORDER_SIGNED',
+        service: 'Document',
+        performedBy: currentUser?.walletAddress || '0xDemoJudgeWallet',
+        role: 'JUDGE',
+        userName: judgeName,
+        docId,
+        caseId: selectedCase.caseId,
+        details: `Judicial Officer ${judgeName} (JUDGE) signed and anchored judicial order ${docId} for case ${selectedCase.caseId} on Sepolia. TX: ${signTx || txHash}`,
+        txHash: signTx || txHash,
+      }).catch(console.warn);
+
       setSignedOrder('');
     } catch (err) {
       setError(

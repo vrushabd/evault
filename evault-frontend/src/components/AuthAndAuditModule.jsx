@@ -144,11 +144,29 @@ const resolveInitiatorInfo = (log, currentUser) => {
   // 7. Role and Name inferences for system / automated actions
   const actionUpper = (log.action || '').toUpperCase();
   const serviceUpper = (log.service || '').toUpperCase();
+  const docIdUpper = (log.docId || '').toUpperCase();
+  const detailsUpper = (log.details || '').toUpperCase();
+
+  // If document ID, details, or action indicates a Judicial Order or Bench signing, ensure role is JUDGE
+  if (
+    actionUpper.includes('ORDER') ||
+    actionUpper.includes('JUDICIAL') ||
+    docIdUpper.startsWith('ORDER-') ||
+    detailsUpper.includes('ORDER') ||
+    detailsUpper.includes('JUDICIAL') ||
+    detailsUpper.includes('JUDGE') ||
+    detailsUpper.includes('BENCH')
+  ) {
+    role = 'JUDGE';
+    if (!name || name === 'Counsel of Record' || name === 'Authorized User' || name.startsWith('User (')) {
+      name = 'Hon. Judicial Officer';
+    }
+  }
 
   if (!role) {
     if (actionUpper.includes('ORDER') || actionUpper.includes('JUDGE') || actionUpper.includes('SIGN')) {
       role = 'JUDGE';
-    } else if (actionUpper.includes('CLASSIFY') || actionUpper.includes('FILE') || actionUpper.includes('AMEND') || actionUpper.includes('UPLOAD')) {
+    } else if (actionUpper.includes('FILE') || actionUpper.includes('AMEND') || actionUpper.includes('UPLOAD')) {
       role = 'LAWYER';
     } else if (actionUpper.includes('AADHAAR') || actionUpper.includes('KYC') || actionUpper.includes('CITIZEN')) {
       role = 'CITIZEN';
@@ -163,7 +181,7 @@ const resolveInitiatorInfo = (log, currentUser) => {
     if (role === 'SYSTEM') {
       name = 'System Daemon';
     } else if (role === 'JUDGE') {
-      name = 'Hon. Judge Officer';
+      name = 'Hon. Judicial Officer';
     } else if (role === 'LAWYER') {
       name = 'Counsel of Record';
     } else if (role === 'CITIZEN' || role === 'CLIENT') {
