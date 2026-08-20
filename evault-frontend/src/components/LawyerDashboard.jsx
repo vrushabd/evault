@@ -176,38 +176,38 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
   const stepIndex = UPLOAD_STEPS.findIndex((s) => s.id === uploadStep);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-paper-card border border-paper-border p-6 shadow-offset-sm rounded-sm">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-paper-surface border border-paper-ink rounded-sm">
-            <FileText size={22} weight="bold" className="text-paper-rust" />
+    <div className="space-y-5">
+      <div className="bg-paper-card border border-paper-border p-5 rounded-lg">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-paper-border bg-paper-surface">
+            <FileText size={19} weight="bold" className="text-paper-rust" />
           </div>
-          <div>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-paper-rust">
-              Advocate workspace
-            </span>
-            <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">
-              {displayName} — Legal Vault Filing
+          <div className="min-w-0">
+            <h2 className="font-heading text-lg font-bold text-paper-ink">
+              Document filing
             </h2>
-            <p className="text-xs text-paper-muted font-body">
-              Bar Council Reg: <strong className="text-paper-ink font-mono">{bar}</strong>
-              {' · '}Role: <strong className="text-paper-rust">{role}</strong>
+            <p className="text-xs text-paper-muted font-body mt-1">
+              {displayName}
+              {bar && bar !== '—' ? (
+                <>
+                  {' · '}Bar Council <span className="font-mono text-paper-ink">{bar}</span>
+                </>
+              ) : null}
+              {' · '}
+              <span className="font-mono">{role}</span>
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7 bg-paper-card border border-paper-border p-6 shadow-offset-sm space-y-4 rounded-sm">
-          <div className="border-b border-paper-border pb-3">
-            <span className="text-[10px] text-paper-rust font-bold uppercase tracking-wider font-mono">
-              Secure archival
-            </span>
-            <h3 className="font-heading text-lg font-bold text-paper-ink mt-0.5">
-              Encrypt & register legal record
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="lg:col-span-7 bg-paper-card border border-paper-border p-5 space-y-4 rounded-lg">
+          <div className="pb-1">
+            <h3 className="font-heading text-base font-bold text-paper-ink">
+              Secure document filing
             </h3>
             <p className="text-xs text-paper-muted font-body mt-1">
-              PDF encrypted server-side with AES-256-GCM before IPFS storage. Only metadata is registered on Sepolia.
+              Encrypt your PDF, pin ciphertext to IPFS, and register metadata on Sepolia.
             </p>
           </div>
 
