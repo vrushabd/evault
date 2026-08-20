@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileText, UploadSimple, ShareNetwork, LockKey, CheckCircle, Warning,
-  ArrowsClockwise, DownloadSimple, ShieldCheck, Clock,
+  ArrowsClockwise, DownloadSimple, ShieldCheck, Clock, FolderOpen,
 } from '@phosphor-icons/react';
 import api from '../services/api';
 
@@ -30,6 +30,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState(null);
   const [auditLogs, setAuditLogs] = useState(null);
+  const [recentCases, setRecentCases] = useState([]);
 
   const displayName = currentUser?.name || 'Advocate';
   const bar = currentUser?.barNumber || '—';
@@ -41,6 +42,23 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
     if (prefill.documentType) setDocType(prefill.documentType);
     if (prefill.file) setSelectedFile(prefill.file);
   }, [prefill]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.listCases();
+        if (!cancelled && res?.success && Array.isArray(res.data)) {
+          setRecentCases(res.data.slice(0, 6));
+        }
+      } catch {
+        /* registry may be empty */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const advanceStep = (id) => setUploadStep(id);
 
@@ -179,36 +197,32 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
   const stepIndex = UPLOAD_STEPS.findIndex((s) => s.id === uploadStep);
 
   return (
-    <div className="space-y-8">
-      <div className="bg-paper-card border border-paper-border p-8 rounded-xl shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-paper-border bg-paper-surface">
-            <FileText size={19} weight="bold" className="text-paper-rust" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="font-heading text-lg font-bold text-paper-ink">
-              Document filing
-            </h2>
-            <p className="text-xs text-paper-muted font-body mt-1">
-              {displayName}
-              {bar && bar !== '—' ? (
-                <>
-                  {' · '}Bar Council <span className="font-mono text-paper-ink">{bar}</span>
-                </>
-              ) : null}
-              {' · '}
-              <span className="font-mono">{role}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 bg-paper-card border border-paper-border p-8 space-y-8 rounded-xl shadow-sm">
-          <div className="pb-1">
-            <h3 className="font-heading text-base font-bold text-paper-ink">
-              Secure document filing
-            </h3>
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="lg:col-span-7 bg-paper-card border border-paper-border p-5 space-y-4 rounded-xl shadow-sm">
+          <div className="flex items-start justify-between gap-3 border-b border-paper-border pb-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-paper-border bg-paper-surface">
+                <FileText size={16} weight="bold" className="text-paper-rust" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-heading text-base font-bold text-paper-ink">
+                  Secure document filing
+                </h2>
+                <p className="text-[11px] text-paper-muted font-body mt-0.5 truncate">
+                  {displayName}
+                  {bar && bar !== '—' ? (
+                    <>
+                      {' · '}
+                      <span className="font-mono text-paper-ink">{bar}</span>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-wide border border-paper-border bg-paper-surface px-2 py-1 rounded-sm text-paper-ink">
+              {role}
+            </span>
           </div>
 
           <form onSubmit={handleUploadAndEncrypt} className="space-y-4 font-body text-xs">
@@ -257,7 +271,7 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
               </div>
             </div>
 
-            <div className="border-2 border-dashed border-paper-border hover:border-paper-ink p-12 text-center bg-paper-bg transition cursor-pointer relative rounded-lg">
+            <div className="border-2 border-dashed border-paper-border hover:border-paper-ink p-6 text-center bg-paper-bg transition cursor-pointer relative rounded-lg">
               <input
                 type="file"
                 accept=".pdf"
@@ -416,9 +430,9 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
           )}
         </div>
 
-        <div className="lg:col-span-5 space-y-8">
-          <div id="grant-access-panel" className="bg-paper-card border border-paper-border p-8 shadow-sm space-y-6 rounded-xl">
-            <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
+        <div className="lg:col-span-5 space-y-5">
+          <div id="grant-access-panel" className="bg-paper-card border border-paper-border p-5 shadow-sm space-y-4 rounded-xl">
+            <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-2">
               <ShareNetwork size={18} weight="bold" className="text-paper-rust" />
               <span>Grant document access</span>
             </h3>
@@ -446,7 +460,84 @@ export function LawyerDashboard({ currentUser, walletAddress, prefill }) {
               </div>
             )}
           </div>
+
+          <div className="bg-paper-card border border-paper-border p-5 shadow-sm space-y-3 rounded-xl">
+            <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-2">
+              <FolderOpen size={18} weight="bold" className="text-paper-rust" />
+              <span>Quick-fill case ID</span>
+            </h3>
+            {recentCases.length === 0 ? (
+              <p className="text-[11px] text-paper-muted">
+                No cases in the registry yet. Type a case ID (CASE-MH-101) or look one up under Cases.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {recentCases.map((c) => {
+                  const id = c.caseId || c.caseNumber || c.cnr || c.id;
+                  if (!id) return null;
+                  const active = caseId.trim().toUpperCase() === String(id).toUpperCase();
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCaseId(String(id).toUpperCase());
+                          setError(null);
+                        }}
+                        className={`w-full text-left px-2.5 py-2 rounded-sm border text-[11px] font-mono transition ${
+                          active
+                            ? 'border-paper-ink bg-paper-surface text-paper-ink'
+                            : 'border-paper-border bg-paper-bg text-paper-muted hover:border-paper-ink hover:text-paper-ink'
+                        }`}
+                      >
+                        <span className="font-bold text-paper-ink">{id}</span>
+                        {(c.title || c.caseTitle || c.parties) && (
+                          <span className="block truncate font-body text-paper-muted mt-0.5">
+                            {c.title || c.caseTitle || c.parties}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
+      </div>
+
+      <div className="bg-paper-card border border-paper-border p-5 rounded-xl shadow-sm">
+        <h3 className="font-heading text-sm font-bold text-paper-ink uppercase mb-3">
+          Filing pipeline
+        </h3>
+        <ol className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {UPLOAD_STEPS.map((s, i) => {
+            const active = s.id === uploadStep;
+            const done = stepIndex > i;
+            return (
+              <li
+                key={s.id}
+                className={`border rounded-sm px-2 py-2 text-[10px] leading-snug ${
+                  active
+                    ? 'border-paper-ink bg-paper-surface text-paper-ink font-semibold'
+                    : done
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                      : 'border-paper-border text-paper-muted'
+                }`}
+              >
+                <span className="block font-mono text-[9px] mb-0.5">{String(i + 1).padStart(2, '0')}</span>
+                {s.label}
+              </li>
+            );
+          })}
+        </ol>
+        {uploadResult?.docId && (
+          <p className="mt-3 text-[11px] font-mono text-paper-muted">
+            Last filing:{' '}
+            <span className="text-paper-rust font-bold">{uploadResult.docId}</span>
+            {uploadResult.status ? ` · ${uploadResult.status}` : ''}
+          </p>
+        )}
       </div>
     </div>
   );

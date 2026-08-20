@@ -276,9 +276,9 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header Banner */}
-      <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl">
+      <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 bg-paper-surface border border-paper-ink rounded-sm">
             <Fingerprint size={22} weight="bold" className="text-paper-rust" />
@@ -299,9 +299,9 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 text-xs">
         {/* Left Column: e-KYC Form */}
-        <div className="bg-paper-card border border-paper-border p-8 shadow-sm space-y-6 rounded-xl">
+        <div className="bg-paper-card border border-paper-border p-5 shadow-sm space-y-4 rounded-xl">
           <div className="flex items-center justify-between border-b border-paper-border pb-3">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2">
               <Fingerprint size={16} weight="bold" className="text-paper-rust" />
@@ -570,7 +570,7 @@ export function AadhaarBinding({ walletAddress, isConnected, onBindingSuccess })
 
         {/* Right Column: Status & Integrity Inspection */}
         <div className="space-y-4">
-          <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
+          <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl space-y-4">
             <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
               <Lock size={16} weight="bold" className="text-paper-rust" />
               <span>Check On-Chain Identity Binding</span>

@@ -278,7 +278,7 @@ export function ECourtsLookup({ currentUser }) {
   // If Client somehow reaches this tab, show strict access restriction notice
   if (isClient) {
     return (
-      <div className="max-w-2xl mx-auto bg-paper-card border border-paper-border p-8 rounded-sm text-center space-y-4 font-mono text-xs">
+      <div className="max-w-2xl mx-auto bg-paper-card border border-paper-border p-5 rounded-sm text-center space-y-4 font-mono text-xs">
         <Lock size={36} className="text-paper-rust mx-auto" />
         <h3 className="font-heading text-lg font-bold text-paper-ink">Role Access Restricted</h3>
         <p className="text-paper-muted">
@@ -289,10 +289,10 @@ export function ECourtsLookup({ currentUser }) {
   }
 
   return (
-    <div className="space-y-8 font-body">
+    <div className="space-y-5 font-body">
       
       {/* Header & Search Interface */}
-      <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
+      <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-border pb-4">
           <div>
             <h2 className="font-heading text-xl font-bold text-paper-ink tracking-tight mt-0.5">
@@ -473,7 +473,7 @@ export function ECourtsLookup({ currentUser }) {
       {/* EXCLUSIVE CASE CREATION VIEW (Only for Lawyer & Police) */}
       {/* ========================================================================= */}
       {activeTab === 'create' && canCreateCase && (
-        <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-8">
+        <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl space-y-5">
           <div className="border-b border-paper-border pb-3">
             <h3 className="font-heading text-lg font-bold text-paper-ink mt-0.5">
               Register New Case
@@ -659,7 +659,7 @@ export function ECourtsLookup({ currentUser }) {
 
       {/* Case Details View */}
       {activeTab === 'case' && caseData && (
-        <div className="bg-paper-card border border-paper-border p-8 shadow-sm space-y-8 rounded-xl">
+        <div className="bg-paper-card border border-paper-border p-5 shadow-sm space-y-5 rounded-xl">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-paper-border pb-4">
             <div>

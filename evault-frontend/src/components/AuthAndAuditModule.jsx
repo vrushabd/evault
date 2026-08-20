@@ -337,9 +337,9 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header Banner */}
-      <div className="bg-paper-card border border-paper-border p-8 rounded-xl shadow-sm">
+      <div className="bg-paper-card border border-paper-border p-5 rounded-xl shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-paper-border bg-paper-surface">
@@ -423,10 +423,10 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
       </div>
 
       {/* Main Dual Panels: Verifier & Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Cryptographic Verifier */}
         <div className="lg:col-span-5 space-y-4 text-xs">
-          <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
+          <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl space-y-4">
             <div className="flex items-center justify-between border-b border-paper-border pb-3">
               <h3 className="font-heading text-base font-bold text-paper-ink flex items-center space-x-2">
                 <Fingerprint size={18} weight="bold" className="text-paper-rust" />
@@ -555,7 +555,7 @@ export function AuthAndAuditModule({ currentUser, walletAddress, onLogout }) {
 
         {/* Right Column: Live Audit Stream & Filters */}
         <div className="lg:col-span-7 space-y-4 text-xs">
-          <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
+          <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-paper-border pb-3">
               <div>
                 <h3 className="font-heading text-base font-bold text-paper-ink">

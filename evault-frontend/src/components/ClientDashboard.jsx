@@ -155,7 +155,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
         action: 'CLIENT_DOCUMENT_UPLOADED',
         service: 'Document',
         performedBy: boundWallet,
-        role: 'CLIENT',
+        role: currentUser?.role || 'CLIENT',
         userName: clientName,
         docId: savedDoc.doc_id,
         caseId: savedDoc.case_id,
@@ -221,10 +221,10 @@ export function ClientDashboard({ walletAddress, currentUser }) {
   };
 
   return (
-    <div className="space-y-8 text-xs font-body">
+    <div className="space-y-5 text-xs font-body">
       
       {/* 1. Client Header Banner */}
-      <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl">
+      <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
             <div className="p-3 bg-paper-surface border border-paper-ink rounded-sm">
@@ -292,9 +292,9 @@ export function ClientDashboard({ walletAddress, currentUser }) {
       {/* FUNCTIONALITY 1: MY VAULT (View & Verify Personal Legal Documents - NO DOWNLOAD) */}
       {/* ========================================================================= */}
       {activeView === 'vault' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* Documents List */}
-          <div className="lg:col-span-7 bg-paper-card border border-paper-border p-8 shadow-sm space-y-6 rounded-xl">
+          <div className="lg:col-span-7 bg-paper-card border border-paper-border p-5 shadow-sm space-y-4 rounded-xl">
             <div className="flex items-center justify-between border-b border-paper-border pb-3">
               <div>
                 <h3 className="font-heading text-sm font-bold text-paper-ink uppercase">
@@ -316,7 +316,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
             )}
 
             {!loadingDocs && vaultDocs.length === 0 && (
-              <div className="text-center py-12 bg-paper-surface border border-dashed border-paper-border rounded-xl space-y-4">
+              <div className="text-center py-8 bg-paper-surface border border-dashed border-paper-border rounded-xl space-y-3">
                 <HardDrives size={28} className="text-paper-muted mx-auto" />
                 <p className="font-heading font-bold text-paper-ink">Your Legal Vault is Empty</p>
                 <p className="text-[11px] text-paper-muted">
@@ -340,7 +340,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
                 return (
                   <StaggerItem key={id}>
                     <div
-                      className={`w-full text-left bg-paper-surface border p-6 rounded-xl space-y-4 transition ${
+                      className={`w-full text-left bg-paper-surface border p-4 rounded-xl space-y-3 transition ${
                         selected
                           ? 'border-paper-ink shadow-sm'
                           : 'border-paper-border hover:border-paper-ink'
@@ -392,8 +392,8 @@ export function ClientDashboard({ walletAddress, currentUser }) {
           </div>
 
           {/* Right Column: Integrity & Cryptographic Proof */}
-          <div className="lg:col-span-5 space-y-8">
-            <div className="bg-paper-card border border-paper-border p-8 shadow-sm rounded-xl space-y-6">
+          <div className="lg:col-span-5 space-y-5">
+            <div className="bg-paper-card border border-paper-border p-5 shadow-sm rounded-xl space-y-4">
               <h3 className="font-heading text-sm font-bold text-paper-ink uppercase flex items-center space-x-2 border-b border-paper-border pb-3">
                 <QrCode size={18} weight="bold" className="text-paper-rust" />
                 <span>Document Integrity Proof</span>
@@ -459,7 +459,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
             </div>
 
             {/* Quick Audit Snapshot in Vault */}
-            <div className="bg-paper-card border border-paper-border p-8 rounded-xl shadow-sm space-y-4">
+            <div className="bg-paper-card border border-paper-border p-5 rounded-xl shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-heading font-bold text-xs uppercase text-paper-ink flex items-center space-x-1.5">
                   <Clock size={15} weight="bold" className="text-paper-rust" />
@@ -541,7 +541,7 @@ export function ClientDashboard({ walletAddress, currentUser }) {
             </div>
 
             {/* File Dropzone */}
-            <div className="border border-dashed border-paper-border hover:border-paper-ink p-8 text-center bg-paper-bg transition cursor-pointer relative rounded-sm">
+            <div className="border border-dashed border-paper-border hover:border-paper-ink p-5 text-center bg-paper-bg transition cursor-pointer relative rounded-sm">
               <input
                 type="file"
                 accept=".pdf"
