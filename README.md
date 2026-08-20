@@ -40,6 +40,24 @@ The system is designed around explicit user roles enforced both at the API gatew
 3. **Secure Sharing:** The document owner grants time-bounded access to another wallet address.
 4. **Zero-Knowledge Verification:** Any user can verify document integrity by comparing the MySQL metadata against the immutable Sepolia state without decrypting or viewing the actual PDF.
 
+### Document Upload Flow
+
+```mermaid
+graph TD
+    A[Lawyer / User] -->|Uploads Document| B(React Frontend)
+    B -->|API Request| C{Spring Cloud Gateway}
+    C -->|Routes to| D[Document Service]
+    
+    D -->|1. Encrypts PDF| E[AES-256-GCM]
+    E -->|2. Pins Ciphertext| F[(IPFS Node)]
+    
+    D -->|3. Hashes Plaintext| G[SHA-256]
+    G -->|4. Registers Metadata| H[(Ethereum Sepolia)]
+    
+    D -->|5. Stores References| I[(MySQL DB)]
+    D -->|6. Logs Action| J[Audit Service]
+```
+
 ---
 
 ## Core Features
